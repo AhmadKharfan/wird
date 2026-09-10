@@ -6,8 +6,8 @@ import androidx.room3.RoomDatabase
 import androidx.room3.RoomDatabaseConstructor
 
 /**
- * Version 3 drops `prayer_record`, which habit and entry superseded. Nothing has read it
- * since the Today screen moved onto the habit layer.
+ * Version 4 gives settings a nickname and renames the privacy modes. Version 3 dropped
+ * `prayer_record`, which habit and entry superseded.
  */
 @Database(
     entities = [
@@ -16,7 +16,7 @@ import androidx.room3.RoomDatabaseConstructor
         SettingsEntity::class,
         OutboxEntity::class,
     ],
-    version = 3,
+    version = 4,
 )
 @ConstructedBy(WirdDatabaseConstructor::class)
 abstract class WirdDatabase : RoomDatabase() {

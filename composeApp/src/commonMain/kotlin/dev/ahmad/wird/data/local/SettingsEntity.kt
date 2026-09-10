@@ -22,6 +22,8 @@ data class SettingsEntity(
     val longitude: Double?,
     val calculationMethod: String,
     val privacyMode: String,
+    // Remembered separately from privacyMode, so it survives a mode that does not show it.
+    val nickname: String? = null,
     val updatedAt: Long,
 ) {
     companion object {

@@ -14,6 +14,7 @@ val uiModule = module {
             toggleHabit = get(),
             seedDefaultRoutine = get(),
             calculateDayStats = get(),
+            observeSettings = get(),
             clock = get(),
             zone = get(),
         )

@@ -38,6 +38,8 @@ class EntryRepositoryImpl(
         write(habitId, day, value)
     }
 
+    override suspend fun allEntries(): List<Entry> = entries.getAll().map { it.toDomain() }
+
     override suspend fun toggle(habitId: String, day: LocalDate) {
         val current = entries.find(habitId, day.toEpochDays())?.value ?: 0
         write(habitId, day, if (current == 0) 1 else 0)

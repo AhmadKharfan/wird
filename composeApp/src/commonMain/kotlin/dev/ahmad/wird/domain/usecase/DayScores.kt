@@ -6,38 +6,48 @@ import dev.ahmad.wird.domain.repository.EntryRepository
 import dev.ahmad.wird.domain.repository.HabitRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.datetime.LocalDate
 
 /**
- * Scores a run of days from two queries rather than two per day.
+ * Snapshots a run of days from two queries rather than two per day.
  *
  * Habit revisions and entries are both read once for the whole span, then a snapshot is
- * built per day from the same two lists. That works because a snapshot already narrows
- * the revisions it is handed down to the ones live on its own day, so each day still
- * scores against its own history — the shared read is an efficiency, not a shortcut past
- * the rule.
+ * built per day from the same two lists. That works because a snapshot already narrows the
+ * revisions it is handed down to the ones live on its own day, so each day still scores
+ * against its own history — the shared read is an efficiency, not a shortcut past the rule.
  *
- * Shared by the week and month views so they cannot drift apart.
+ * Every period view goes through here, so none of them can drift from another.
  */
-internal fun observeDayScores(
+internal fun observeSnapshots(
     days: List<LocalDate>,
     habits: HabitRepository,
     entries: EntryRepository,
-    calculateDayStats: CalculateDayStatsUseCase,
-): Flow<List<DayScore>> {
-    require(days.isNotEmpty()) { "cannot score an empty run of days" }
+): Flow<List<DaySnapshot>> {
+    require(days.isNotEmpty()) { "cannot snapshot an empty run of days" }
 
     return combine(
         habits.observeHabitsIn(days.first(), days.last()),
         entries.observeRange(days.first(), days.last()),
     ) { revisions, recorded ->
+        val entriesByDay = recorded.groupBy { it.day }
         days.map { day ->
-            val snapshot = DaySnapshot(
+            DaySnapshot(
                 day = day,
                 habits = revisions,
-                entries = recorded.filter { it.day == day },
+                entries = entriesByDay[day].orEmpty(),
             )
-            DayScore(day = day, stats = calculateDayStats(snapshot))
         }
     }
 }
+
+/** The same run of days, scored. */
+internal fun observeDayScores(
+    days: List<LocalDate>,
+    habits: HabitRepository,
+    entries: EntryRepository,
+    calculateDayStats: CalculateDayStatsUseCase,
+): Flow<List<DayScore>> =
+    observeSnapshots(days, habits, entries).map { snapshots ->
+        snapshots.map { DayScore(day = it.day, stats = calculateDayStats(it)) }
+    }

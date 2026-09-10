@@ -99,7 +99,7 @@ class TodayViewModel(
                         // User text, so never passed through the formatter.
                         label = habit.name,
                         valueLabel = habit.valueLabel(value, numerals),
-                        isComplete = value >= habit.target,
+                        isComplete = habit.isKeptBy(value),
                     )
                 },
             )

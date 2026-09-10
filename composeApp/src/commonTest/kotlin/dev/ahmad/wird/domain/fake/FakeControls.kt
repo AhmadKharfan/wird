@@ -21,6 +21,8 @@ class FakeControls {
 
     private var persistentFailure: Throwable? = null
     private var oneShotFailure: Throwable? = null
+    private var laterFailure: Throwable? = null
+    private var callsBeforeFailure = 0
 
     /** Every subsequent call fails with [error], until [succeed]. */
     fun failWith(error: Throwable) {
@@ -32,10 +34,20 @@ class FakeControls {
         oneShotFailure = error
     }
 
-    /** Clears both failure modes. */
+    /**
+     * The next [calls] calls succeed and every call after them fails with [error], until
+     * [succeed]. This is the shape of a failure part-way through a series of writes.
+     */
+    fun failAfter(calls: Int, error: Throwable) {
+        callsBeforeFailure = calls
+        laterFailure = error
+    }
+
+    /** Clears every failure mode. */
     fun succeed() {
         persistentFailure = null
         oneShotFailure = null
+        laterFailure = null
     }
 
     /** Called by a fake at the start of every operation. */
@@ -47,5 +59,9 @@ class FakeControls {
             throw error
         }
         persistentFailure?.let { throw it }
+        laterFailure?.let { error ->
+            if (callsBeforeFailure == 0) throw error
+            callsBeforeFailure--
+        }
     }
 }

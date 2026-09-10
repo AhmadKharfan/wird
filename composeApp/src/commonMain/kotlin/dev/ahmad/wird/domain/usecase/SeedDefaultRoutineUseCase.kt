@@ -24,6 +24,8 @@ class SeedDefaultRoutineUseCase(
         if (settings.observeSettings().first().onboardingCompleted) return
         if (habits.hasAnyHabit()) return
 
-        DefaultRoutine.habitsFrom(today).forEach { habits.upsert(it) }
+        // In one write: a seed that stopped part way would already count as "a habit has
+        // existed", and the rest of the routine would never be planted.
+        habits.upsertAll(DefaultRoutine.habitsFrom(today))
     }
 }

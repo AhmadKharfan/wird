@@ -11,6 +11,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * Seeding runs on every launch and must plant the routine exactly once. "Once" is decided
@@ -100,6 +101,19 @@ class SeedDefaultRoutineUseCaseTest {
         SeedDefaultRoutineUseCase(habits, onboarded)(seedDay)
 
         assertEquals(emptyList(), habits.habits)
+    }
+
+    @Test
+    fun plantsTheWholeRoutineOrNoneOfItWhenStorageFailsPartWay() = runTest {
+        // A seed that stopped half way would already count as "a habit has existed", so the
+        // rest of the routine would never be planted on any later launch. Two calls succeed
+        // here: the check for existing habits, and one write.
+        val habits = FakeHabitRepository()
+        habits.controls.failAfter(calls = 2, error = IllegalStateException("disk full"))
+
+        runCatching { SeedDefaultRoutineUseCase(habits, FakeSettingsRepository())(seedDay) }
+
+        assertTrue(habits.habits.isEmpty() || habits.habits.size == 11, "planted ${habits.habits.size} of 11")
     }
 
     @Test

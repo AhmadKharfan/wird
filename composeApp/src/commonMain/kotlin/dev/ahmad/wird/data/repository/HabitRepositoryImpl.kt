@@ -88,6 +88,26 @@ class HabitRepositoryImpl(
         )
     }
 
+    override suspend fun updateAppearance(habitId: String, name: String, iconKey: String) {
+        // Checked here, before storage, rather than left to Habit's own init — that only
+        // runs on the way back out, by which point every read of this habit would fail.
+        require(name.isNotBlank()) { "habit name must not be blank" }
+
+        habits.setAppearance(habitId, name, iconKey)
+
+        outbox.record(
+            entityType = OutboxWriter.TYPE_HABIT,
+            entityId = habitId,
+            op = OutboxWriter.OP_APPEARANCE,
+            payload = buildJsonObject {
+                put("habitId", JsonPrimitive(habitId))
+                put("name", JsonPrimitive(name))
+                put("iconKey", JsonPrimitive(iconKey))
+                put("updatedAt", JsonPrimitive(clock.now().toEpochMilliseconds()))
+            },
+        )
+    }
+
     override suspend fun setActive(habitId: String, active: Boolean, asOf: LocalDate) {
         if (active) habits.reinstate(habitId) else habits.retire(habitId, asOf.toEpochDays())
 

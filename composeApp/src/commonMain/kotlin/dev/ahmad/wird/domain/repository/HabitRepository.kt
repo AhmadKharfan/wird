@@ -66,4 +66,14 @@ interface HabitRepository {
      * maximum and leaves every earlier day counting it.
      */
     suspend fun setActive(habitId: String, active: Boolean, asOf: LocalDate)
+
+    /**
+     * Renames the habit and changes its icon on **every** revision.
+     *
+     * Name and icon are presentational, like order: a rename should read the same on every
+     * day the habit appears. That is the opposite of a target change, which [upsert] applies
+     * from a day onward and never backwards — so appearance is its own operation, and it
+     * never opens a revision or touches anything that scores.
+     */
+    suspend fun updateAppearance(habitId: String, name: String, iconKey: String)
 }

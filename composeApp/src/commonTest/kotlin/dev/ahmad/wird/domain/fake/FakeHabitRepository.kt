@@ -63,6 +63,14 @@ class FakeHabitRepository(
         }
     }
 
+    override suspend fun updateAppearance(habitId: String, name: String, iconKey: String) {
+        require(name.isNotBlank()) { "habit name must not be blank" }
+        controls.gate()
+        stored.value = stored.value.map { habit ->
+            if (habit.id == habitId) habit.copy(name = name, iconKey = iconKey) else habit
+        }
+    }
+
     override suspend fun setActive(habitId: String, active: Boolean, asOf: LocalDate) {
         controls.gate()
         stored.value = stored.value.map { habit ->

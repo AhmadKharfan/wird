@@ -1,15 +1,15 @@
 package dev.ahmad.wird.domain.repository
 
 import dev.ahmad.wird.domain.model.Circle
-import dev.ahmad.wird.domain.model.CircleStanding
+import dev.ahmad.wird.domain.model.CircleWeek
 import dev.ahmad.wird.domain.model.DayStats
 import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.LocalDate
 
 /**
- * Circles are the one part of the product that is not local-only. **Nothing implements
- * this yet** — it is declared now so the shape is fixed before a backend exists, and so
- * the use cases above it can be written against something stable.
+ * Circles are the one part of the product that is not local-only. The backend lands in a
+ * later pack; until then a seeded stand-in implements this, and nothing above the interface
+ * can tell the difference.
  *
  * The signatures are chosen so a networked implementation drops in without changing any
  * of them:
@@ -26,6 +26,10 @@ import kotlinx.datetime.LocalDate
  *   before anything reaches this interface — a remote implementation is never in a
  *   position to over-share.
  *
+ * The read side was redesigned before anything implemented it. A per-day standing could not
+ * carry what the circle screens need — the Saturday week's totals, which member is the user,
+ * the group streak, and when the copy was last fetched — so [observeWeek] replaced it.
+ *
  * Unlike the local repositories, these calls may await the network. No UI interaction is
  * allowed to block on one: a circle screen shows what the flow has cached and refreshes
  * underneath.
@@ -35,8 +39,16 @@ interface CircleRepository {
     /** The circles the user belongs to. */
     fun observeMyCircles(): Flow<List<Circle>>
 
-    /** How each member of [circleId] scored on [day], best first. */
-    fun observeStandings(circleId: String, day: LocalDate): Flow<List<CircleStanding>>
+    /**
+     * The week of [circleId] that begins on the Saturday [weekStart], as last fetched, or
+     * null when nothing has been fetched for it.
+     *
+     * A remote implementation emits its cached copy first and a refreshed one after, and a
+     * network failure leaves the cached copy standing rather than failing the flow: circle
+     * screens read offline from whatever was cached, with its [CircleWeek.refreshedAt] as
+     * "last updated". Members arrive in no particular order — ranking is a domain decision.
+     */
+    fun observeWeek(circleId: String, weekStart: LocalDate): Flow<CircleWeek?>
 
     /** Creates a circle with the user as its first member, and returns it with its invite code. */
     suspend fun create(name: String): Circle

@@ -22,6 +22,10 @@ interface EntryDao {
     @Query("SELECT * FROM entry WHERE epochDay = :epochDay")
     suspend fun getDay(epochDay: Long): List<EntryEntity>
 
+    // Unwindowed on purpose: only the export reads every entry on every day.
+    @Query("SELECT * FROM entry")
+    suspend fun getAll(): List<EntryEntity>
+
     @Query("SELECT * FROM entry WHERE epochDay >= :fromEpochDay AND epochDay <= :toEpochDay")
     suspend fun getRange(fromEpochDay: Long, toEpochDay: Long): List<EntryEntity>
 

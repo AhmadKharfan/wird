@@ -38,6 +38,10 @@ interface HabitDao {
     @Query("SELECT EXISTS(SELECT 1 FROM habit)")
     suspend fun hasAny(): Boolean
 
+    // Unwindowed on purpose: only the export reads every revision there has ever been.
+    @Query("SELECT * FROM habit")
+    suspend fun getAll(): List<HabitEntity>
+
     // Only the open revision can be edited as the current habit.
     @Query("SELECT * FROM habit WHERE habitId = :habitId AND retiredOnEpochDay IS NULL LIMIT 1")
     suspend fun currentRevision(habitId: String): HabitEntity?

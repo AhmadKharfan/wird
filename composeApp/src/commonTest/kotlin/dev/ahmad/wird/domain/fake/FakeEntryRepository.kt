@@ -41,6 +41,11 @@ class FakeEntryRepository(
         write(habitId, day, value)
     }
 
+    override suspend fun allEntries(): List<Entry> {
+        controls.gate()
+        return stored.value
+    }
+
     override suspend fun toggle(habitId: String, day: LocalDate) {
         controls.gate()
         write(habitId, day, if (valueOf(habitId, day) == 0) 1 else 0)

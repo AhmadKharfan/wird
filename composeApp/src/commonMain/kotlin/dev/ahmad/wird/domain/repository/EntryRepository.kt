@@ -34,4 +34,7 @@ interface EntryRepository {
      * means for a counter is scoring, and belongs to the use case, not here.
      */
     suspend fun toggle(habitId: String, day: LocalDate)
+
+    /** Every entry on every day, for the export. The one read not windowed to a range. */
+    suspend fun allEntries(): List<Entry>
 }

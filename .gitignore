@@ -1,0 +1,29 @@
+# gradle
+.gradle/
+build/
+**/build/
+gradle/gradle-daemon-jvm.properties
+
+# kotlin
+.kotlin/
+kotlin-js-store/
+
+# kotlin/js + wasm toolchain
+node_modules/
+
+# android
+local.properties
+captures/
+*.apk
+*.aab
+*.keystore
+
+# ide
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# os
+.DS_Store
+Thumbs.db

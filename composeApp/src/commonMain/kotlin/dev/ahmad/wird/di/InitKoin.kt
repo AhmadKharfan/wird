@@ -13,5 +13,5 @@ fun initKoin(
     configure: KoinApplication.() -> Unit = {},
 ) = startKoin {
     configure()
-    modules(platformModule, dataModule, domainModule)
+    modules(platformModule, dataModule, domainModule, uiModule)
 }

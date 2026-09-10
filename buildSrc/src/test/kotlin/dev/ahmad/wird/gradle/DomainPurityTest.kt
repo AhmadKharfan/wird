@@ -70,7 +70,7 @@ class DomainPurityTest {
     }
 
     @Test
-    fun rejectsCompseAndKoinImports() {
+    fun rejectsComposeAndKoinImports() {
         val violations = check(
             """
             package dev.ahmad.wird.domain.model
@@ -97,6 +97,94 @@ class DomainPurityTest {
         assertEquals(1, violations.size)
         assertEquals("forbidden reference", violations.single().kind)
         assertEquals("android.content.Context", violations.single().detail)
+    }
+
+    @Test
+    fun rejectsAFullyQualifiedReferenceOutsideTheAllowedPrefixes() {
+        // The allowlist has to govern inline references as well as imports. A list of known
+        // offenders let java.util.UUID straight through.
+        val violations = check(
+            """
+            package dev.ahmad.wird.domain.model
+
+            private val id = java.util.UUID.randomUUID()
+            """,
+        )
+
+        assertEquals(listOf("java.util.UUID"), violations.map { it.detail })
+    }
+
+    @Test
+    fun rejectsAFullyQualifiedReferenceIntoData() {
+        val violations = check(
+            """
+            package dev.ahmad.wird.domain.model
+
+            data class Thing(val row: dev.ahmad.wird.data.local.HabitEntity)
+            """,
+        )
+
+        assertEquals(listOf("dev.ahmad.wird.data.local.HabitEntity"), violations.map { it.detail })
+    }
+
+    @Test
+    fun seesThroughBacktickEscapedNames() {
+        // Kotlin lets any identifier be escaped in backticks, which the plain name patterns
+        // do not match; an escaped import and an escaped inline reference both hid.
+        val violations = check(
+            """
+            package dev.ahmad.wird.domain.model
+
+            import `androidx`.compose.runtime.Stable
+            private val id = `java`.util.UUID.randomUUID()
+            """,
+        )
+
+        assertEquals(listOf("androidx.compose.runtime.Stable", "java.util.UUID"), violations.map { it.detail })
+    }
+
+    @Test
+    fun acceptsFullyQualifiedReferencesUnderAnAllowedPrefix() {
+        val violations = check(
+            """
+            package dev.ahmad.wird.domain.model
+
+            data class Thing(val day: kotlinx.datetime.LocalDate, val clock: kotlin.time.Clock = kotlin.time.Clock.System)
+            """,
+        )
+
+        assertEquals(emptyList(), violations)
+    }
+
+    @Test
+    fun doesNotMistakeAPropertyChainForAPackage() {
+        val violations = check(
+            """
+            package dev.ahmad.wird.domain.usecase
+
+            val next = snapshot.day.plusDays(1)
+            val shown = settings.privacyMode.showsCircles
+            val kind = habit.kind.name
+            """,
+        )
+
+        assertEquals(emptyList(), violations)
+    }
+
+    @Test
+    fun ignoresQualifiedNamesInsideKDoc() {
+        val violations = check(
+            """
+            package dev.ahmad.wird.domain.model
+
+            /**
+             * Ids are minted by the data layer, never with java.util.UUID here.
+             */
+            data class Thing(val id: String)
+            """,
+        )
+
+        assertEquals(emptyList(), violations)
     }
 
     @Test

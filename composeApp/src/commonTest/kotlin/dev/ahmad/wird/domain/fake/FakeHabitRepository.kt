@@ -78,13 +78,21 @@ class FakeHabitRepository(
 
     override suspend fun setActive(habitId: String, active: Boolean, asOf: LocalDate) {
         controls.gate()
-        stored.value = stored.value.map { habit ->
-            when {
-                habit.id != habitId -> habit
-                active -> habit.copy(retiredOn = null)
-                habit.retiredOn == null -> habit.copy(retiredOn = asOf)
-                else -> habit
+        if (!active) {
+            stored.value = stored.value.map { habit ->
+                if (habit.id == habitId && habit.retiredOn == null) habit.copy(retiredOn = asOf) else habit
             }
+            return
+        }
+
+        // As the real repository: the newest revision comes back from asOf, and the days the
+        // habit was off stay off.
+        val latest = stored.value.filter { it.id == habitId }.maxByOrNull { it.effectiveFrom } ?: return
+        val retiredOn = latest.retiredOn ?: return
+        stored.value = if (asOf <= retiredOn) {
+            stored.value.map { if (it === latest) it.copy(retiredOn = null) else it }
+        } else {
+            stored.value + latest.copy(effectiveFrom = asOf, retiredOn = null)
         }
     }
 }

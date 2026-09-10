@@ -1,5 +1,6 @@
 package dev.ahmad.wird.data.repository
 
+import dev.ahmad.wird.data.local.RoomLocalTransaction
 import dev.ahmad.wird.data.local.createTestDatabase
 import dev.ahmad.wird.domain.model.Habit
 import dev.ahmad.wird.domain.model.HabitKind
@@ -29,7 +30,7 @@ class ExportReadsTest {
 
     private val outbox = OutboxWriter(database.outboxDao(), clock, ids)
     private val habits = HabitRepositoryImpl(database.habitDao(), outbox, clock, ids)
-    private val entries = EntryRepositoryImpl(database.entryDao(), outbox, clock, ids)
+    private val entries = EntryRepositoryImpl(database.entryDao(), outbox, RoomLocalTransaction(database), clock, ids)
 
     @AfterTest
     fun closeDatabase() = database.close()

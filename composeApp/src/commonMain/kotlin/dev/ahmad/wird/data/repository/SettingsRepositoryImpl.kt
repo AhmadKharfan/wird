@@ -1,5 +1,6 @@
 package dev.ahmad.wird.data.repository
 
+import dev.ahmad.wird.data.local.LocalTransaction
 import dev.ahmad.wird.data.local.SettingsDao
 import dev.ahmad.wird.data.mapper.toDomain
 import dev.ahmad.wird.data.mapper.toEntity
@@ -22,8 +23,8 @@ import kotlin.time.Clock
 class SettingsRepositoryImpl(
     private val settings: SettingsDao,
     private val outbox: OutboxWriter,
+    private val transaction: LocalTransaction,
     private val clock: Clock,
-    private val newId: () -> String,
 ) : SettingsRepository {
 
     override fun observeSettings(): Flow<AppSettings> =
@@ -32,29 +33,32 @@ class SettingsRepositoryImpl(
             .map { row -> row?.toDomain() ?: AppSettings.DEFAULTS }
 
     override suspend fun update(transform: (AppSettings) -> AppSettings) {
-        // Read-modify-write, so two settings changed at once cannot clobber each other.
-        val current = settings.get()?.toDomain() ?: AppSettings.DEFAULTS
-        val updated = transform(current)
-        val writtenAt = clock.now().toEpochMilliseconds()
+        // Read, transform and write in one transaction, so two settings changed at once cannot
+        // clobber each other and the outbox never records a change that was not stored.
+        transaction.write {
+            val current = settings.get()?.toDomain() ?: AppSettings.DEFAULTS
+            val updated = transform(current)
+            val writtenAt = clock.now().toEpochMilliseconds()
 
-        settings.upsert(updated.toEntity(updatedAt = writtenAt))
+            settings.upsert(updated.toEntity(updatedAt = writtenAt))
 
-        outbox.record(
-            entityType = OutboxWriter.TYPE_SETTINGS,
-            // There is only ever one settings row, so its identity is its type.
-            entityId = OutboxWriter.TYPE_SETTINGS,
-            op = OutboxWriter.OP_UPSERT,
-            payload = buildJsonObject {
-                put("themeMode", JsonPrimitive(updated.themeMode.name))
-                put("numeralSystem", JsonPrimitive(updated.numeralSystem.name))
-                put("latitude", JsonPrimitive(updated.location?.latitude))
-                put("longitude", JsonPrimitive(updated.location?.longitude))
-                put("calculationMethod", JsonPrimitive(updated.calculationMethod.name))
-                put("privacyMode", JsonPrimitive(updated.privacyMode.name))
-                put("nickname", JsonPrimitive(updated.nickname))
-                put("onboardingCompleted", JsonPrimitive(updated.onboardingCompleted))
-                put("updatedAt", JsonPrimitive(writtenAt))
-            },
-        )
+            outbox.record(
+                entityType = OutboxWriter.TYPE_SETTINGS,
+                // There is only ever one settings row, so its identity is its type.
+                entityId = OutboxWriter.TYPE_SETTINGS,
+                op = OutboxWriter.OP_UPSERT,
+                payload = buildJsonObject {
+                    put("themeMode", JsonPrimitive(updated.themeMode.name))
+                    put("numeralSystem", JsonPrimitive(updated.numeralSystem.name))
+                    put("latitude", JsonPrimitive(updated.location?.latitude))
+                    put("longitude", JsonPrimitive(updated.location?.longitude))
+                    put("calculationMethod", JsonPrimitive(updated.calculationMethod.name))
+                    put("privacyMode", JsonPrimitive(updated.privacyMode.name))
+                    put("nickname", JsonPrimitive(updated.nickname))
+                    put("onboardingCompleted", JsonPrimitive(updated.onboardingCompleted))
+                    put("updatedAt", JsonPrimitive(writtenAt))
+                },
+            )
+        }
     }
 }

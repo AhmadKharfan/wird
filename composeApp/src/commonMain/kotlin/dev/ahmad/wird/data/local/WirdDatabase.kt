@@ -6,25 +6,20 @@ import androidx.room3.RoomDatabase
 import androidx.room3.RoomDatabaseConstructor
 
 /**
- * Version 2 adds the habit, entry, settings and outbox tables.
- *
- * `prayer_record` is still declared here on purpose. It is superseded by habit/entry and
- * will be dropped in version 3, when its entity and the code reading it go together — so
- * that every commit in between leaves a database the app can actually open.
+ * Version 3 drops `prayer_record`, which habit and entry superseded. Nothing has read it
+ * since the Today screen moved onto the habit layer.
  */
 @Database(
     entities = [
-        PrayerRecordEntity::class,
         HabitEntity::class,
         EntryEntity::class,
         SettingsEntity::class,
         OutboxEntity::class,
     ],
-    version = 2,
+    version = 3,
 )
 @ConstructedBy(WirdDatabaseConstructor::class)
 abstract class WirdDatabase : RoomDatabase() {
-    abstract fun prayerRecordDao(): PrayerRecordDao
     abstract fun habitDao(): HabitDao
     abstract fun entryDao(): EntryDao
     abstract fun settingsDao(): SettingsDao

@@ -11,9 +11,13 @@ import androidx.sqlite.execSQL
 // fix, not data to discard.
 //
 // The statements below are copied verbatim from the generated schema JSON rather than
-// written by hand. Room validates the migrated database against that schema on open and
-// refuses to start on any difference, down to an index name — so hand-written SQL that
-// merely looks equivalent fails at runtime rather than at build time.
+// written by hand. Room checks the migrated database against that schema when it opens and
+// refuses to start on a missing or mismatched *table*, so SQL that merely looks equivalent
+// fails there rather than on a user's device.
+//
+// It does NOT check index names — a renamed index opens cleanly and silently costs the
+// query planner the index. That gap is measured, not assumed: renaming one index here fails
+// no Room validation at all. WirdMigrationTest therefore asserts the index names itself.
 
 /**
  * Adds the habit, entry, settings and outbox tables.

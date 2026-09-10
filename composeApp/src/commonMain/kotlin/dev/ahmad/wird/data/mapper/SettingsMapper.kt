@@ -32,6 +32,7 @@ fun SettingsEntity.toDomain(): AppSettings {
             storedMode
         },
         nickname = storedNickname,
+        onboardingCompleted = onboardingCompleted,
     )
 }
 
@@ -45,5 +46,6 @@ fun AppSettings.toEntity(updatedAt: Long): SettingsEntity = SettingsEntity(
     calculationMethod = calculationMethod.name,
     privacyMode = privacyMode.name,
     nickname = nickname,
+    onboardingCompleted = onboardingCompleted,
     updatedAt = updatedAt,
 )

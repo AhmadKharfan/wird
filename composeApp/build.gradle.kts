@@ -7,6 +7,8 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.room)
 }
 
 kotlin {
@@ -35,6 +37,9 @@ kotlin {
 
             implementation(libs.coroutines.core)
             implementation(libs.kotlinx.datetime)
+
+            implementation(libs.room.runtime)
+            implementation(libs.adhan)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -45,6 +50,16 @@ kotlin {
             implementation(libs.androidx.activity.compose)
         }
     }
+}
+
+
+room3 {
+    schemaDirectory(layout.projectDirectory.dir("schemas").asFile.invariantSeparatorsPath)
+}
+
+dependencies {
+    add("kspAndroid", libs.room.compiler)
+    add("kspWasmJs", libs.room.compiler)
 }
 
 android {

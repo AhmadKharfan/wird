@@ -1,10 +1,12 @@
 package dev.ahmad.wird.di
 
+import dev.ahmad.wird.domain.usecase.CalculateBadgesUseCase
 import dev.ahmad.wird.domain.usecase.CalculateDayStatsUseCase
 import dev.ahmad.wird.domain.usecase.CalculateHabitCommitmentUseCase
 import dev.ahmad.wird.domain.usecase.CalculateStreakUseCase
 import dev.ahmad.wird.domain.usecase.ExportDataUseCase
 import dev.ahmad.wird.domain.usecase.GetPrayerTimesUseCase
+import dev.ahmad.wird.domain.usecase.LoadBadgesUseCase
 import dev.ahmad.wird.domain.usecase.ObserveActiveHabitsUseCase
 import dev.ahmad.wird.domain.usecase.ObserveCircleTabVisibleUseCase
 import dev.ahmad.wird.domain.usecase.ObserveDayUseCase
@@ -51,6 +53,12 @@ val domainModule = module {
 
     // --- circles ---------------------------------------------------------------------------
     factory { ObserveLeaderboardUseCase(circles = get(), settings = get(), clock = get(), zone = get()) }
+
+    // --- badges ---------------------------------------------------------------------------
+    factory { CalculateBadgesUseCase(calculateDayStats = get()) }
+    factory {
+        LoadBadgesUseCase(habits = get(), entries = get(), clock = get(), zone = get(), calculateBadges = get())
+    }
 
     // --- preferences ----------------------------------------------------------------------
     factory { ObserveSettingsUseCase(settings = get()) }

@@ -1,5 +1,6 @@
 package dev.ahmad.wird.data.local
 
+import androidx.room3.ColumnInfo
 import androidx.room3.Entity
 import androidx.room3.PrimaryKey
 
@@ -24,6 +25,8 @@ data class SettingsEntity(
     val privacyMode: String,
     // Remembered separately from privacyMode, so it survives a mode that does not show it.
     val nickname: String? = null,
+    // The default is declared so the schema matches the column the 4 -> 5 migration adds.
+    @ColumnInfo(defaultValue = "0") val onboardingCompleted: Boolean = false,
     val updatedAt: Long,
 ) {
     companion object {

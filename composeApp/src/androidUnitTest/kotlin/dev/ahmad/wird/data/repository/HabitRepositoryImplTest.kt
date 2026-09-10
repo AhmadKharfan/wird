@@ -1,5 +1,6 @@
 package dev.ahmad.wird.data.repository
 
+import dev.ahmad.wird.data.local.RoomLocalTransaction
 import dev.ahmad.wird.data.local.createTestDatabase
 import dev.ahmad.wird.domain.model.Habit
 import dev.ahmad.wird.domain.model.HabitKind
@@ -36,7 +37,7 @@ class HabitRepositoryImplTest {
     private val ids = { "id-${nextId++}" }
 
     private val outbox = OutboxWriter(database.outboxDao(), clock, ids)
-    private val repository = HabitRepositoryImpl(database.habitDao(), outbox, clock, ids)
+    private val repository = HabitRepositoryImpl(database.habitDao(), outbox, RoomLocalTransaction(database), clock, ids)
 
     @AfterTest
     fun closeDatabase() = database.close()
@@ -209,7 +210,7 @@ class HabitRepositoryImplTest {
         // showed an empty routine until something was tapped.
         repository.upsert(habit())
 
-        val freshRepository = HabitRepositoryImpl(database.habitDao(), outbox, clock, ids)
+        val freshRepository = HabitRepositoryImpl(database.habitDao(), outbox, RoomLocalTransaction(database), clock, ids)
 
         assertEquals(listOf("prayers"), freshRepository.observeActiveHabits().first().map { it.id })
     }

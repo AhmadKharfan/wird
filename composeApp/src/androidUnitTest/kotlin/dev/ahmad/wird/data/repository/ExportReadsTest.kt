@@ -29,7 +29,7 @@ class ExportReadsTest {
     private val ids = { "id-${nextId++}" }
 
     private val outbox = OutboxWriter(database.outboxDao(), clock, ids)
-    private val habits = HabitRepositoryImpl(database.habitDao(), outbox, clock, ids)
+    private val habits = HabitRepositoryImpl(database.habitDao(), outbox, RoomLocalTransaction(database), clock, ids)
     private val entries = EntryRepositoryImpl(database.entryDao(), outbox, RoomLocalTransaction(database), clock, ids)
 
     @AfterTest

@@ -1,5 +1,6 @@
 package dev.ahmad.wird.data.repository
 
+import dev.ahmad.wird.data.local.RoomLocalTransaction
 import dev.ahmad.wird.data.local.createTestDatabase
 import dev.ahmad.wird.domain.model.Habit
 import dev.ahmad.wird.domain.model.HabitKind
@@ -35,7 +36,7 @@ class HabitAppearanceTest {
     private val ids = { "id-${nextId++}" }
 
     private val repository =
-        HabitRepositoryImpl(database.habitDao(), OutboxWriter(database.outboxDao(), clock, ids), clock, ids)
+        HabitRepositoryImpl(database.habitDao(), OutboxWriter(database.outboxDao(), clock, ids), RoomLocalTransaction(database), clock, ids)
 
     @AfterTest
     fun closeDatabase() = database.close()

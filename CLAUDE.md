@@ -73,37 +73,53 @@ queues run sequentially, one commit each. **The relay never commits — Claude d
 
 ---
 
-## 2. Git and pull request rules
+## 2. Git workflow — mandatory
 
-These are absolute.
+### Commits
 
-### Commit messages
-
-- **Conventional commits, entirely lowercase — including the subject after the colon.**
-  Format: `type(scope): subject`, e.g. `feat(domain): add habit and entry models`.
+- Conventional commits, **entirely lowercase**: `type(scope): subject`.
 - Types: `feat`, `fix`, `chore`, `docs`, `test`, `refactor`, `build`, `ci`.
-- Imperative mood. No trailing period. Subject under 72 characters.
-- **Never add a `Co-Authored-By` trailer. Never add "Generated with Claude Code", a
-  session URL, or any other attribution line.** The body, when present, is plain prose
-  explaining *why* — nothing else.
+- Imperative mood, no trailing period, subject under 72 characters.
+- **Never** add `Co-Authored-By`, "Generated with Claude Code", a session link, or any
+  other trailer. Commit bodies are plain prose or absent.
+- **One to three files per commit, grouped by reason not by folder.** More than three
+  needs a justification or a split. Generated sets (the Gradle wrapper) are exempt.
+- Each commit leaves the build working where possible.
 
-### Commit size
+### Branches
 
-- One commit covers **one to three files that change together for one reason**.
-- If a commit would touch more than three files, ask whether it should be split. The only
-  exception is a generated set that is meaningless apart, such as the Gradle wrapper.
-- **Every commit must leave the build in a working state** wherever that is possible.
+- One branch per unit of work, named `type/short-kebab-subject` — for example
+  `feat/today-uistate`, `chore/gradle-scaffold`, `test/streak-edge-cases`.
+- **Branch from an up-to-date `main`, never from another feature branch.**
 
 ### Pull requests
 
-- Branch off `main`, one concern per branch.
-- A PR should stay around **10 files or fewer**. If it would exceed that, or mix
-  unrelated concerns, split it and say why.
-- Fill in `.github/pull_request_template.md` properly — tick the boxes that genuinely
-  pass, and explain the ones that do not. Never submit an empty template.
-- Verify the branch builds **before** merging.
-- Merge with `--rebase --delete-branch`. Do not open the next PR until the previous one
-  is merged and `main` is green.
+- One PR per branch, containing several small commits.
+- Keep PRs **under ~10 files and one concern**. A phase that produces more becomes
+  several PRs — split it and say why in each PR body.
+- Title lowercase, same style as a commit subject.
+- Body uses `.github/pull_request_template.md` with the checkboxes **genuinely filled**,
+  not left blank.
+- Verify **both target builds and the tests pass on the branch** before merging.
+- Merge with `gh pr merge --rebase --delete-branch`. **Never squash** — it destroys the
+  small commits — and **never a merge commit**, which injects a capitalised subject.
+- Return to `main` and pull before starting the next branch.
+- **Never open a second PR while the previous one is unmerged.**
+
+### Never
+
+- Never force-push to `main`.
+- Never commit secrets, keystores, `local.properties`, or `.env`.
+- Never commit without running the clean-code and test skills first.
+
+> The clean-code and test skills are **not installed** in this environment (see section 7).
+> Until they are, that last rule is unbacked: the substitute is the gate commands in
+> section 5, run by hand, plus a manual read of the diff. Do not treat the gates as
+> equivalent — they catch breakage, not poor design.
+
+### Tooling note
+
+`gh` is installed but not on `PATH`; invoke it as `"/c/Program Files/GitHub CLI/gh.exe"`.
 
 ---
 

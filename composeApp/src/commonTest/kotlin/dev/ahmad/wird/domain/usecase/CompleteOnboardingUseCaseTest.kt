@@ -6,7 +6,6 @@ import dev.ahmad.wird.domain.model.AppSettings
 import dev.ahmad.wird.domain.model.DefaultRoutine
 import dev.ahmad.wird.domain.model.NumeralSystem
 import dev.ahmad.wird.domain.model.RoutineChoice
-import dev.ahmad.wird.domain.util.plusDays
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
@@ -68,7 +67,7 @@ class CompleteOnboardingUseCaseTest {
         // The launch-time seed runs every day after this. Starting empty must survive it.
         complete(RoutineChoice.EMPTY)
 
-        seed(today.plusDays(1))
+        seed()
 
         assertEquals(emptyList(), habits.habits)
     }

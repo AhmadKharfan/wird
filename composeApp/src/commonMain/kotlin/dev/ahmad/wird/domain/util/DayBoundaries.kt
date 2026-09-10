@@ -13,7 +13,4 @@ object DayBoundaries {
 
     fun isToday(date: LocalDate, zone: TimeZone, clock: Clock): Boolean =
         clock.now() >= startOf(date, zone) && clock.now() < startOf(date.plusDays(1), zone)
-
-    private fun LocalDate.plusDays(days: Int): LocalDate =
-        LocalDate.fromEpochDays(toEpochDays() + days)
 }

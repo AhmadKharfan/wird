@@ -53,6 +53,11 @@ kotlin {
             implementation(libs.kotlin.test)
             implementation(libs.coroutines.test)
         }
+        // Database tests run on the host JVM, where the Android artifact's .so files are
+        // useless — BundledSQLiteDriver needs the JVM variant's desktop natives instead.
+        androidUnitTest.dependencies {
+            implementation(libs.sqlite.bundled.jvm)
+        }
         androidMain.dependencies {
             implementation(libs.compose.ui.tooling)
             implementation(libs.androidx.activity.compose)

@@ -11,9 +11,6 @@ import dev.ahmad.wird.ui.format.NumeralFormatter
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
-import kotlin.time.Clock
 
 /**
  * Provisional Today screen on the new data layer, replaced when the design board lands.
@@ -32,8 +29,6 @@ class TodayViewModel(
     private val seedDefaultRoutine: SeedDefaultRoutineUseCase,
     private val calculateDayStats: CalculateDayStatsUseCase,
     private val observeSettings: ObserveSettingsUseCase,
-    private val clock: Clock,
-    private val zone: TimeZone,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : BaseViewModel<TodayUiState, TodayEffect>(TodayUiState()), TodayInteractionListener {
 
@@ -62,7 +57,7 @@ class TodayViewModel(
         updateState { it.copy(isLoading = true, errorMessage = null) }
 
         tryToExecute(
-            block = { seedDefaultRoutine(clock.now().toLocalDateTime(zone).date) },
+            block = { seedDefaultRoutine() },
             onSuccess = { observeSnapshot() },
             onError = { updateState { state -> state.copy(isLoading = false, errorMessage = FAILED_TO_LOAD) } },
             dispatcher = ioDispatcher,

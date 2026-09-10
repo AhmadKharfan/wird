@@ -15,8 +15,6 @@ val uiModule = module {
             seedDefaultRoutine = get(),
             calculateDayStats = get(),
             observeSettings = get(),
-            clock = get(),
-            zone = get(),
         )
     }
 }

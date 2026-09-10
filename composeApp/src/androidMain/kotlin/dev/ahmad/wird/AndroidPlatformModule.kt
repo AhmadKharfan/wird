@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room3.Room
 import androidx.room3.RoomDatabase
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import dev.ahmad.wird.data.local.WIRD_MIGRATIONS
 import dev.ahmad.wird.data.local.WirdDatabase
 import kotlinx.coroutines.Dispatchers
 import org.koin.core.module.Module
@@ -15,6 +16,7 @@ fun androidPlatformModule(context: Context): Module = module {
             context = context,
             name = context.getDatabasePath(DATABASE_NAME).absolutePath,
         )
+            .addMigrations(*WIRD_MIGRATIONS)
             .setDriver(BundledSQLiteDriver())
             .setQueryCoroutineContext(Dispatchers.IO)
     }

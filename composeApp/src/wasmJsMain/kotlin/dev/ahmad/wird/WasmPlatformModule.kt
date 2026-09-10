@@ -3,6 +3,7 @@ package dev.ahmad.wird
 import androidx.room3.Room
 import androidx.room3.RoomDatabase
 import androidx.sqlite.driver.web.WebWorkerSQLiteDriver
+import dev.ahmad.wird.data.local.WIRD_MIGRATIONS
 import dev.ahmad.wird.data.local.WirdDatabase
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -22,6 +23,7 @@ private fun createModuleWorker(url: String): Worker =
 fun wasmPlatformModule(): Module = module {
     single<RoomDatabase.Builder<WirdDatabase>> {
         Room.databaseBuilder<WirdDatabase>(name = DATABASE_NAME)
+            .addMigrations(*WIRD_MIGRATIONS)
             .setDriver(WebWorkerSQLiteDriver(createModuleWorker("sqlite-worker.js")))
     }
 }

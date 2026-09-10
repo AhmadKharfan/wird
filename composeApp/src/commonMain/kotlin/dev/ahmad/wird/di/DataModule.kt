@@ -43,7 +43,7 @@ val dataModule = module {
     single<LocalTransaction> { RoomLocalTransaction(database = get()) }
 
     single<HabitRepository> {
-        HabitRepositoryImpl(habits = get(), outbox = get(), clock = get(), newId = get())
+        HabitRepositoryImpl(habits = get(), outbox = get(), transaction = get(), clock = get(), newId = get())
     }
     single<EntryRepository> {
         EntryRepositoryImpl(entries = get(), outbox = get(), transaction = get(), clock = get(), newId = get())

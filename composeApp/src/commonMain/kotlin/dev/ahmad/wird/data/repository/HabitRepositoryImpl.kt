@@ -1,6 +1,7 @@
 package dev.ahmad.wird.data.repository
 
 import dev.ahmad.wird.data.local.HabitDao
+import dev.ahmad.wird.data.local.LocalTransaction
 import dev.ahmad.wird.data.mapper.toDomain
 import dev.ahmad.wird.data.mapper.toEntity
 import dev.ahmad.wird.domain.model.Habit
@@ -19,10 +20,14 @@ import kotlin.time.Clock
  * one from there, so every day before it keeps the target that was actually in force then.
  * That is why there is no `update` here — only [upsert], which means "from this day
  * onward".
+ *
+ * Every write is several statements, so each runs in one [LocalTransaction] with its outbox
+ * record: all of it lands, or none of it does.
  */
 class HabitRepositoryImpl(
     private val habits: HabitDao,
     private val outbox: OutboxWriter,
+    private val transaction: LocalTransaction,
     private val clock: Clock,
     private val newId: () -> String,
 ) : HabitRepository {
@@ -47,6 +52,73 @@ class HabitRepositoryImpl(
     override suspend fun allRevisions(): List<Habit> = habits.getAll().map { it.toDomain() }
 
     override suspend fun upsert(habit: Habit) {
+        transaction.write { writeRevision(habit) }
+    }
+
+    override suspend fun upsertAll(revisions: List<Habit>) {
+        transaction.write { revisions.forEach { writeRevision(it) } }
+    }
+
+    override suspend fun reorder(habitIdsInOrder: List<String>) {
+        transaction.write {
+            habitIdsInOrder.forEachIndexed { position, habitId ->
+                habits.setSortOrder(habitId, position)
+            }
+
+            outbox.record(
+                entityType = OutboxWriter.TYPE_HABIT,
+                entityId = habitIdsInOrder.joinToString(","),
+                op = OutboxWriter.OP_REORDER,
+                payload = buildJsonObject {
+                    put("order", JsonPrimitive(habitIdsInOrder.joinToString(",")))
+                    put("updatedAt", JsonPrimitive(clock.now().toEpochMilliseconds()))
+                },
+            )
+        }
+    }
+
+    override suspend fun updateAppearance(habitId: String, name: String, iconKey: String) {
+        // Checked here, before storage, rather than left to Habit's own init — that only
+        // runs on the way back out, by which point every read of this habit would fail.
+        require(name.isNotBlank()) { "habit name must not be blank" }
+
+        transaction.write {
+            habits.setAppearance(habitId, name, iconKey)
+
+            outbox.record(
+                entityType = OutboxWriter.TYPE_HABIT,
+                entityId = habitId,
+                op = OutboxWriter.OP_APPEARANCE,
+                payload = buildJsonObject {
+                    put("habitId", JsonPrimitive(habitId))
+                    put("name", JsonPrimitive(name))
+                    put("iconKey", JsonPrimitive(iconKey))
+                    put("updatedAt", JsonPrimitive(clock.now().toEpochMilliseconds()))
+                },
+            )
+        }
+    }
+
+    override suspend fun setActive(habitId: String, active: Boolean, asOf: LocalDate) {
+        transaction.write {
+            if (active) reinstate(habitId, asOf) else habits.retire(habitId, asOf.toEpochDays())
+
+            outbox.record(
+                entityType = OutboxWriter.TYPE_HABIT,
+                entityId = habitId,
+                op = OutboxWriter.OP_SET_ACTIVE,
+                payload = buildJsonObject {
+                    put("habitId", JsonPrimitive(habitId))
+                    put("active", JsonPrimitive(active))
+                    put("asOfEpochDay", JsonPrimitive(asOf.toEpochDays()))
+                    put("updatedAt", JsonPrimitive(clock.now().toEpochMilliseconds()))
+                },
+            )
+        }
+    }
+
+    /** One revision and its outbox record. Callers supply the transaction. */
+    private suspend fun writeRevision(habit: Habit) {
         // Close whatever is currently open before opening the new revision, so the two
         // never overlap on a day and no day can see the habit twice. Retiring only ever
         // touches an open revision, so this is a no-op when the habit is new.
@@ -70,58 +142,6 @@ class HabitRepositoryImpl(
                 put("sortOrder", JsonPrimitive(row.sortOrder))
                 put("effectiveFromEpochDay", JsonPrimitive(row.effectiveFromEpochDay))
                 put("updatedAt", JsonPrimitive(row.updatedAt))
-            },
-        )
-    }
-
-    override suspend fun reorder(habitIdsInOrder: List<String>) {
-        habitIdsInOrder.forEachIndexed { position, habitId ->
-            habits.setSortOrder(habitId, position)
-        }
-
-        outbox.record(
-            entityType = OutboxWriter.TYPE_HABIT,
-            entityId = habitIdsInOrder.joinToString(","),
-            op = OutboxWriter.OP_REORDER,
-            payload = buildJsonObject {
-                put("order", JsonPrimitive(habitIdsInOrder.joinToString(",")))
-                put("updatedAt", JsonPrimitive(clock.now().toEpochMilliseconds()))
-            },
-        )
-    }
-
-    override suspend fun updateAppearance(habitId: String, name: String, iconKey: String) {
-        // Checked here, before storage, rather than left to Habit's own init — that only
-        // runs on the way back out, by which point every read of this habit would fail.
-        require(name.isNotBlank()) { "habit name must not be blank" }
-
-        habits.setAppearance(habitId, name, iconKey)
-
-        outbox.record(
-            entityType = OutboxWriter.TYPE_HABIT,
-            entityId = habitId,
-            op = OutboxWriter.OP_APPEARANCE,
-            payload = buildJsonObject {
-                put("habitId", JsonPrimitive(habitId))
-                put("name", JsonPrimitive(name))
-                put("iconKey", JsonPrimitive(iconKey))
-                put("updatedAt", JsonPrimitive(clock.now().toEpochMilliseconds()))
-            },
-        )
-    }
-
-    override suspend fun setActive(habitId: String, active: Boolean, asOf: LocalDate) {
-        if (active) reinstate(habitId, asOf) else habits.retire(habitId, asOf.toEpochDays())
-
-        outbox.record(
-            entityType = OutboxWriter.TYPE_HABIT,
-            entityId = habitId,
-            op = OutboxWriter.OP_SET_ACTIVE,
-            payload = buildJsonObject {
-                put("habitId", JsonPrimitive(habitId))
-                put("active", JsonPrimitive(active))
-                put("asOfEpochDay", JsonPrimitive(asOf.toEpochDays()))
-                put("updatedAt", JsonPrimitive(clock.now().toEpochMilliseconds()))
             },
         )
     }

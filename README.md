@@ -50,7 +50,7 @@ Three layers, with the dependency rule pointing inward: `ui` and `data` may depe
 and kotlinx-coroutines. That rule is enforced mechanically by a Gradle task wired into
 every Kotlin compilation, not by convention.
 
-See [docs/architecture.md](docs/architecture.md) for the full layout and
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the full layout and
 [CLAUDE.md](CLAUDE.md) for the working rules, including the commit and pull request
 conventions this repository follows.
 

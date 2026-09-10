@@ -14,6 +14,9 @@ import kotlinx.datetime.LocalDate
  */
 object DefaultRoutine {
 
+    /** The five prayers habit. The five-prayers badge follows it by this id, so it must not drift. */
+    const val FIVE_PRAYERS_ID = "five-prayers"
+
     /**
      * The routine as it would be created on [day].
      *
@@ -21,7 +24,7 @@ object DefaultRoutine {
      * is never shown a missed day it did not have.
      */
     fun habitsFrom(day: LocalDate): List<Habit> = listOf(
-        habit(day, 0, "five-prayers", "الصلوات الخمس", HabitKind.COUNTER, target = 5),
+        habit(day, 0, FIVE_PRAYERS_ID, "الصلوات الخمس", HabitKind.COUNTER, target = 5),
         habit(day, 1, "duha", "صلاة الضحى"),
         habit(day, 2, "witr", "صلاة الوتر"),
         habit(day, 3, "rawatib", "سنن الرواتب"),

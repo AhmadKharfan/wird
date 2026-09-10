@@ -1,5 +1,6 @@
 package dev.ahmad.wird.data.repository
 
+import dev.ahmad.wird.data.local.RoomLocalTransaction
 import dev.ahmad.wird.data.local.createTestDatabase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -26,7 +27,7 @@ class EntryRepositoryImplTest {
     private val ids = { "id-${nextId++}" }
 
     private val outbox = OutboxWriter(database.outboxDao(), clock, ids)
-    private val repository = EntryRepositoryImpl(database.entryDao(), outbox, clock, ids)
+    private val repository = EntryRepositoryImpl(database.entryDao(), outbox, RoomLocalTransaction(database), clock, ids)
 
     @AfterTest
     fun closeDatabase() = database.close()
@@ -150,7 +151,7 @@ class EntryRepositoryImplTest {
         // to come from the browser build, once a screen consumes these repositories.
         repository.setValue("prayers", day, 3)
 
-        val freshRepository = EntryRepositoryImpl(database.entryDao(), outbox, clock, ids)
+        val freshRepository = EntryRepositoryImpl(database.entryDao(), outbox, RoomLocalTransaction(database), clock, ids)
 
         assertEquals(3, freshRepository.observeDay(day).first().single().value)
     }

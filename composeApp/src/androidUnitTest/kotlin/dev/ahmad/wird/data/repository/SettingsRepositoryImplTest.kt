@@ -1,5 +1,6 @@
 package dev.ahmad.wird.data.repository
 
+import dev.ahmad.wird.data.local.RoomLocalTransaction
 import dev.ahmad.wird.data.local.createTestDatabase
 import dev.ahmad.wird.domain.model.AppSettings
 import dev.ahmad.wird.domain.model.Coordinates
@@ -28,7 +29,7 @@ class SettingsRepositoryImplTest {
     private val ids = { "id-${nextId++}" }
 
     private val outbox = OutboxWriter(database.outboxDao(), clock, ids)
-    private val repository = SettingsRepositoryImpl(database.settingsDao(), outbox, clock, ids)
+    private val repository = SettingsRepositoryImpl(database.settingsDao(), outbox, RoomLocalTransaction(database), clock)
 
     @AfterTest
     fun closeDatabase() = database.close()
@@ -99,7 +100,7 @@ class SettingsRepositoryImplTest {
     fun emitsStoredSettingsOnAFirstCollectionWithNoWriteToProvokeIt() = runTest {
         repository.update { it.copy(themeMode = ThemeMode.DARK) }
 
-        val freshRepository = SettingsRepositoryImpl(database.settingsDao(), outbox, clock, ids)
+        val freshRepository = SettingsRepositoryImpl(database.settingsDao(), outbox, RoomLocalTransaction(database), clock)
 
         assertEquals(ThemeMode.DARK, freshRepository.observeSettings().first().themeMode)
     }

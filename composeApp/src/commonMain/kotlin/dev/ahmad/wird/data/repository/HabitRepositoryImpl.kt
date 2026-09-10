@@ -111,7 +111,7 @@ class HabitRepositoryImpl(
     }
 
     override suspend fun setActive(habitId: String, active: Boolean, asOf: LocalDate) {
-        if (active) habits.reinstate(habitId) else habits.retire(habitId, asOf.toEpochDays())
+        if (active) reinstate(habitId, asOf) else habits.retire(habitId, asOf.toEpochDays())
 
         outbox.record(
             entityType = OutboxWriter.TYPE_HABIT,
@@ -124,5 +124,31 @@ class HabitRepositoryImpl(
                 put("updatedAt", JsonPrimitive(clock.now().toEpochMilliseconds()))
             },
         )
+    }
+
+    /**
+     * Brings a retired habit back from [asOf], carrying its newest revision forward.
+     *
+     * The days it was off stay off: reopening the old revision would make every one of them
+     * count again, and reopening every revision would leave two live on the same day. Coming
+     * back no later than the day it left leaves no gap to keep, so the newest revision is
+     * simply reopened.
+     */
+    private suspend fun reinstate(habitId: String, asOf: LocalDate) {
+        val latest = habits.latestRevision(habitId) ?: return
+        val retiredOn = latest.retiredOnEpochDay ?: return
+
+        if (asOf.toEpochDays() <= retiredOn) {
+            habits.reopen(latest.revisionId)
+        } else {
+            habits.insert(
+                latest.copy(
+                    revisionId = newId(),
+                    effectiveFromEpochDay = asOf.toEpochDays(),
+                    retiredOnEpochDay = null,
+                    updatedAt = clock.now().toEpochMilliseconds(),
+                ),
+            )
+        }
     }
 }

@@ -1,5 +1,6 @@
 package dev.ahmad.wird.integration
 
+import dev.ahmad.wird.data.local.RoomLocalTransaction
 import dev.ahmad.wird.data.local.createTestDatabase
 import dev.ahmad.wird.data.repository.EntryRepositoryImpl
 import dev.ahmad.wird.data.repository.HabitRepositoryImpl
@@ -51,7 +52,7 @@ class HabitManagementDoneCriterionTest {
 
     private val outbox = OutboxWriter(database.outboxDao(), clock, ids)
     private val habits = HabitRepositoryImpl(database.habitDao(), outbox, clock, ids)
-    private val entries = EntryRepositoryImpl(database.entryDao(), outbox, clock, ids)
+    private val entries = EntryRepositoryImpl(database.entryDao(), outbox, RoomLocalTransaction(database), clock, ids)
 
     private val save = SaveHabitUseCase(habits, clock, zone, ids)
     private val reorder = ReorderHabitsUseCase(habits)

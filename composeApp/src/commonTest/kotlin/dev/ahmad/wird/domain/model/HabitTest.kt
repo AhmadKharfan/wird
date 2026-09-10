@@ -99,6 +99,30 @@ class HabitTest {
         assertFalse(habit(retiredOn = jan15).active)
     }
 
+    // --- isKeptBy: the one rule for "done" -----------------------------------------
+
+    @Test
+    fun isNotKeptOneShortOfItsTarget() {
+        assertFalse(habit(kind = HabitKind.COUNTER, target = 5).isKeptBy(4))
+    }
+
+    @Test
+    fun isKeptAtExactlyItsTarget() {
+        // Breaks on a `>` instead of `>=`: five of five prayers would not count.
+        assertTrue(habit(kind = HabitKind.COUNTER, target = 5).isKeptBy(5))
+    }
+
+    @Test
+    fun staysKeptWhenTappedPastItsTarget() {
+        // Storage keeps an over-tap so the user can wrap back to zero; it is still done.
+        assertTrue(habit(kind = HabitKind.COUNTER, target = 5).isKeptBy(6))
+    }
+
+    @Test
+    fun isNotKeptByNothing() {
+        assertFalse(habit().isKeptBy(0))
+    }
+
     // --- construction invariants ---------------------------------------------------
 
     @Test

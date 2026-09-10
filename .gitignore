@@ -27,3 +27,9 @@ captures/
 # os
 .DS_Store
 Thumbs.db
+
+# agent skills — installed per-machine by `npx skills add`, not part of the repo.
+# CLAUDE.md section 7 declares the skill location as user-global.
+.agents/
+.claude/
+skills-lock.json

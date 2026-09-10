@@ -81,7 +81,7 @@ class CalculateBadgesUseCase(
                 window.clear()
                 continue
             }
-            window.addLast(snapshot.valueFor(habitId) >= habit.target)
+            window.addLast(habit.isKeptBy(snapshot.valueFor(habitId)))
             if (window.size > CONSISTENCY_WINDOW) window.removeFirst()
 
             val kept = window.count { it }
@@ -98,7 +98,7 @@ class CalculateBadgesUseCase(
 
     private fun DaySnapshot.keptFivePrayers(): Boolean {
         val prayers = scheduledHabits.firstOrNull { it.id == DefaultRoutine.FIVE_PRAYERS_ID } ?: return false
-        return valueFor(prayers.id) >= prayers.target
+        return prayers.isKeptBy(valueFor(prayers.id))
     }
 
     private companion object {

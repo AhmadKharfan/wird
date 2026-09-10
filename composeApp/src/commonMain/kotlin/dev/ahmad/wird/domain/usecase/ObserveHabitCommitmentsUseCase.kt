@@ -1,5 +1,6 @@
 package dev.ahmad.wird.domain.usecase
 
+import dev.ahmad.wird.domain.model.DaySnapshot
 import dev.ahmad.wird.domain.model.Habit
 import dev.ahmad.wird.domain.model.HabitCommitment
 import dev.ahmad.wird.domain.repository.EntryRepository
@@ -42,7 +43,7 @@ class ObserveHabitCommitmentsUseCase(
 
     private fun commitmentFor(
         revisions: List<Habit>,
-        snapshots: List<dev.ahmad.wird.domain.model.DaySnapshot>,
+        snapshots: List<DaySnapshot>,
     ): HabitCommitment {
         val distinct = revisions.distinct()
         val current = distinct.maxBy { it.effectiveFrom }
@@ -52,7 +53,7 @@ class ObserveHabitCommitmentsUseCase(
         distinct.forEach { revision ->
             snapshots.filter { revision.isLiveOn(it.day) }.forEach { snapshot ->
                 elapsed++
-                if (snapshot.valueFor(revision.id) >= revision.target) completed++
+                if (revision.isKeptBy(snapshot.valueFor(revision.id))) completed++
             }
         }
 

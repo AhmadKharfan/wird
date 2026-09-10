@@ -55,9 +55,20 @@ class FakeHabitRepository(
 
     override suspend fun upsert(habit: Habit) {
         controls.gate()
-        val previous = stored.value.firstOrNull { it.id == habit.id && it.retiredOn == null }
+        stored.value = stored.value.withUpserted(habit)
+    }
+
+    override suspend fun upsertAll(revisions: List<Habit>) {
+        controls.gate()
+        // One assignment, so a failure leaves nothing half-written — as the real one's
+        // transaction does.
+        stored.value = revisions.fold(stored.value) { all, habit -> all.withUpserted(habit) }
+    }
+
+    private fun List<Habit>.withUpserted(habit: Habit): List<Habit> {
+        val previous = firstOrNull { it.id == habit.id && it.retiredOn == null }
         val closed = previous?.copy(retiredOn = habit.effectiveFrom)
-        stored.value = stored.value.filterNot { it === previous } + listOfNotNull(closed) + habit
+        return filterNot { it === previous } + listOfNotNull(closed) + habit
     }
 
     override suspend fun reorder(habitIdsInOrder: List<String>) {

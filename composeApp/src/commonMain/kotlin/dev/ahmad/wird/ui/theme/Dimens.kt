@@ -22,5 +22,4 @@ object Radius {
 object Sizes {
     /** Accessibility floor. Nothing tappable may be smaller than this. */
     val minTouchTarget: Dp = 48.dp
-    val listRowHeight: Dp = 56.dp
 }

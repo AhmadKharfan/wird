@@ -1,10 +1,11 @@
 package dev.ahmad.wird.ui.base
 
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
-
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -89,9 +90,12 @@ class BaseViewModelTest {
         viewModel.announce("only once")
         assertEquals(CounterEffect.Announce("only once"), viewModel.effect.first())
 
+        // The later collector attaches before anything else is sent. A replaying stream would
+        // hand it the effect already delivered; a channel makes it wait for the next one.
+        val late = async(start = CoroutineStart.UNDISPATCHED) { viewModel.effect.first() }
         viewModel.announce("second")
-        // A fresh collector sees only what is sent after it attaches, never the first effect.
-        assertEquals(CounterEffect.Announce("second"), viewModel.effect.first())
+
+        assertEquals(CounterEffect.Announce("second"), late.await())
     }
 
     @Test

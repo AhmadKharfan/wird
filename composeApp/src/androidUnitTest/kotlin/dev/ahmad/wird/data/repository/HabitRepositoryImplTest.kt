@@ -25,6 +25,7 @@ class HabitRepositoryImplTest {
 
     private val jan10 = LocalDate(2026, 1, 10)
     private val jan15 = LocalDate(2026, 1, 15)
+    private val jan20 = LocalDate(2026, 1, 20)
 
     private var now = Instant.fromEpochMilliseconds(1_000)
     private val clock = object : Clock {
@@ -139,6 +140,42 @@ class HabitRepositoryImplTest {
         repository.setActive("prayers", active = true, asOf = jan15)
 
         assertEquals(listOf("prayers"), repository.observeActiveHabits().first().map { it.id })
+    }
+
+    @Test
+    fun leavesTheDaysItWasOffUnscoredWhenReinstated() = runTest {
+        // Reinstating brings the habit back from the day it returns. The days it was switched
+        // off stay off, or bringing a habit back would rescore every one of them.
+        repository.upsert(habit(effectiveFrom = jan10))
+        repository.setActive("prayers", active = false, asOf = jan15)
+
+        repository.setActive("prayers", active = true, asOf = jan20)
+
+        assertEquals(emptyList(), repository.observeHabitsOn(LocalDate(2026, 1, 17)).first())
+        assertEquals(listOf("prayers"), repository.observeHabitsOn(jan20).first().map { it.id })
+    }
+
+    @Test
+    fun reinstatesOnlyTheLatestRevisionOfARevisedHabit() = runTest {
+        // Reopening every revision would leave two live on the same day, which no day can score.
+        repository.upsert(habit(target = 3, effectiveFrom = jan10))
+        repository.upsert(habit(target = 5, effectiveFrom = LocalDate(2026, 1, 12)))
+        repository.setActive("prayers", active = false, asOf = jan15)
+
+        repository.setActive("prayers", active = true, asOf = jan20)
+
+        assertEquals(listOf(3), repository.observeHabitsOn(LocalDate(2026, 1, 11)).first().map { it.target })
+        assertEquals(listOf(5), repository.observeHabitsOn(jan20).first().map { it.target })
+        assertEquals(listOf(5), repository.observeActiveHabits().first().map { it.target })
+    }
+
+    @Test
+    fun leavesAHabitThatIsAlreadyActiveAsItIs() = runTest {
+        repository.upsert(habit(effectiveFrom = jan10))
+
+        repository.setActive("prayers", active = true, asOf = jan15)
+
+        assertEquals(listOf(jan10), repository.allRevisions().map { it.effectiveFrom })
     }
 
     @Test

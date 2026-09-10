@@ -70,7 +70,8 @@ interface HabitRepository {
      * Retires the habit from [asOf] onward, or reinstates it from [asOf] onward.
      *
      * [asOf] is exclusive when retiring: passing today removes the habit from *today's*
-     * maximum and leaves every earlier day counting it.
+     * maximum and leaves every earlier day counting it. Reinstating never reaches back: the
+     * days the habit was off stay off, and it returns with the target it left with.
      */
     suspend fun setActive(habitId: String, active: Boolean, asOf: LocalDate)
 

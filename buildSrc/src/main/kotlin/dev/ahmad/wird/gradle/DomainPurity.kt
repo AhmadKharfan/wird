@@ -28,10 +28,18 @@ object DomainPurity {
     private val IMPORT = Regex("""^\s*import\s+([\w.]+)""")
 
     /**
-     * Fully-qualified references written inline, which carry no import line and would
-     * otherwise slip past the import check.
+     * A type written with its package inline — lowercase segments, then a capitalised name —
+     * which carries no import line and would otherwise slip past the import check. It is
+     * judged by the same allowlist as an import. A property chain such as
+     * `snapshot.day.plusDays` never ends in a capitalised name, so it is not mistaken for one.
      */
-    private val INLINE_REFERENCE = Regex(
+    private val QUALIFIED_TYPE = Regex("""\b[a-z]\w*(?:\.[a-z]\w*)+\.[A-Z]\w*""")
+
+    /**
+     * Known outside packages reached through a function rather than a type, such as
+     * `org.koin.core.context.startKoin()`, which [QUALIFIED_TYPE] cannot see.
+     */
+    private val KNOWN_OUTSIDE_PACKAGE = Regex(
         """\b(androidx\.[\w.]+|android\.[\w.]+|org\.jetbrains\.compose\.[\w.]+|org\.koin\.[\w.]+|io\.github\.jan\.[\w.]+)""",
     )
 
@@ -43,8 +51,10 @@ object DomainPurity {
     fun check(source: String, allowedPrefixes: List<String>): List<DomainViolation> {
         val violations = mutableListOf<DomainViolation>()
 
-        source.lines().forEachIndexed { index, line ->
+        source.lines().forEachIndexed { index, written ->
             val lineNumber = index + 1
+            // Any identifier may be escaped in backticks; unescaped, it is the same name.
+            val line = written.replace("`", "")
             val imported = IMPORT.find(line)?.groupValues?.get(1)
 
             if (imported != null) {
@@ -54,13 +64,23 @@ object DomainPurity {
                 return@forEachIndexed
             }
 
-            if (line.trimStart().startsWith("//")) return@forEachIndexed
+            if (line.isComment()) return@forEachIndexed
 
-            INLINE_REFERENCE.find(line)?.let { match ->
-                violations += DomainViolation(lineNumber, "forbidden reference", match.value)
-            }
+            (QUALIFIED_TYPE.findAll(line) + KNOWN_OUTSIDE_PACKAGE.findAll(line))
+                .map { it.value }
+                .filter { reference -> allowedPrefixes.none { reference.startsWith(it) } }
+                .distinct()
+                .forEach { reference ->
+                    violations += DomainViolation(lineNumber, "forbidden reference", reference)
+                }
         }
 
         return violations
+    }
+
+    /** A line comment, or a line inside a KDoc or block comment. */
+    private fun String.isComment(): Boolean {
+        val trimmed = trimStart()
+        return trimmed.startsWith("//") || trimmed.startsWith("/*") || trimmed.startsWith("*")
     }
 }

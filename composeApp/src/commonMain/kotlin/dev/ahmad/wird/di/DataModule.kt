@@ -2,11 +2,13 @@ package dev.ahmad.wird.di
 
 import androidx.room3.RoomDatabase
 import dev.ahmad.wird.data.local.WirdDatabase
+import dev.ahmad.wird.data.remote.FakeCircleRepository
 import dev.ahmad.wird.data.repository.AdhanPrayerTimesRepository
 import dev.ahmad.wird.data.repository.EntryRepositoryImpl
 import dev.ahmad.wird.data.repository.HabitRepositoryImpl
 import dev.ahmad.wird.data.repository.OutboxWriter
 import dev.ahmad.wird.data.repository.SettingsRepositoryImpl
+import dev.ahmad.wird.domain.repository.CircleRepository
 import dev.ahmad.wird.domain.repository.EntryRepository
 import dev.ahmad.wird.domain.repository.HabitRepository
 import dev.ahmad.wird.domain.repository.PrayerTimesRepository
@@ -46,6 +48,10 @@ val dataModule = module {
     single<SettingsRepository> {
         SettingsRepositoryImpl(settings = get(), outbox = get(), clock = get(), newId = get())
     }
+
+    // The seeded stand-in until the circle backend lands. Swapping in the real client is
+    // this one binding; nothing above the interface changes.
+    single<CircleRepository> { FakeCircleRepository(clock = get(), zone = get()) }
 
     single<PrayerTimesRepository> { AdhanPrayerTimesRepository() }
 }

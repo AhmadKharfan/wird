@@ -2,6 +2,7 @@ package dev.ahmad.wird.data.repository
 
 import dev.ahmad.wird.data.local.EntryDao
 import dev.ahmad.wird.data.local.EntryEntity
+import dev.ahmad.wird.data.local.LocalTransaction
 import dev.ahmad.wird.data.mapper.toDomain
 import dev.ahmad.wird.domain.model.Entry
 import dev.ahmad.wird.domain.repository.EntryRepository
@@ -14,12 +15,13 @@ import kotlin.time.Clock
 
 /**
  * Local-first: every write lands in the local database and returns. Nothing here awaits a
- * network, and the outbox record is appended alongside the write so the queue can never
- * disagree with the data.
+ * network, and the outbox record is appended in the same transaction as the write, so the
+ * queue can never disagree with the data.
  */
 class EntryRepositoryImpl(
     private val entries: EntryDao,
     private val outbox: OutboxWriter,
+    private val transaction: LocalTransaction,
     private val clock: Clock,
     private val newId: () -> String,
 ) : EntryRepository {
@@ -35,14 +37,18 @@ class EntryRepositoryImpl(
             .map { rows -> rows.map { it.toDomain() } }
 
     override suspend fun setValue(habitId: String, day: LocalDate, value: Int) {
-        write(habitId, day, value)
+        transaction.write { write(habitId, day, value) }
     }
 
     override suspend fun allEntries(): List<Entry> = entries.getAll().map { it.toDomain() }
 
     override suspend fun toggle(habitId: String, day: LocalDate) {
-        val current = entries.find(habitId, day.toEpochDays())?.value ?: 0
-        write(habitId, day, if (current == 0) 1 else 0)
+        // The read belongs inside the transaction too, so two quick taps cannot both flip the
+        // same old value.
+        transaction.write {
+            val current = entries.find(habitId, day.toEpochDays())?.value ?: 0
+            write(habitId, day, if (current == 0) 1 else 0)
+        }
     }
 
     /**

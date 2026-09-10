@@ -11,6 +11,8 @@ composeMaterial3 = "1.12.0-alpha03"
 androidCompileSdk = "37"
 androidMinSdk = "26"
 androidTargetSdk = "37"
+appVersionCode = "1"
+appVersionName = "1.0"
 
 # --- libraries ---------------------------------------------------------------
 androidxActivityCompose = "1.13.0"

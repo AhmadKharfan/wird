@@ -34,6 +34,7 @@ kotlin {
             implementation(libs.lifecycle.runtime.compose)
 
             implementation(libs.coroutines.core)
+            implementation(libs.kotlinx.datetime)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

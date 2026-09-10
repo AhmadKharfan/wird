@@ -17,6 +17,14 @@ interface EntryDao {
     @Query("SELECT * FROM entry WHERE epochDay >= :fromEpochDay AND epochDay <= :toEpochDay")
     fun observeRange(fromEpochDay: Long, toEpochDay: Long): Flow<List<EntryEntity>>
 
+    // Suspend twins of the two observers above, used to seed each observation with a real
+    // read so its first emission never depends on an invalidation.
+    @Query("SELECT * FROM entry WHERE epochDay = :epochDay")
+    suspend fun getDay(epochDay: Long): List<EntryEntity>
+
+    @Query("SELECT * FROM entry WHERE epochDay >= :fromEpochDay AND epochDay <= :toEpochDay")
+    suspend fun getRange(fromEpochDay: Long, toEpochDay: Long): List<EntryEntity>
+
     // The natural key lets callers retain the row's stable sync identity.
     @Query("SELECT * FROM entry WHERE habitId = :habitId AND epochDay = :epochDay LIMIT 1")
     suspend fun find(habitId: String, epochDay: Long): EntryEntity?

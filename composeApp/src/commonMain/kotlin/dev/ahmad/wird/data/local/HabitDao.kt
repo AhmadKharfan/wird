@@ -22,6 +22,18 @@ interface HabitDao {
     @Query("SELECT * FROM habit WHERE effectiveFromEpochDay <= :toEpochDay AND (retiredOnEpochDay IS NULL OR retiredOnEpochDay > :fromEpochDay) ORDER BY sortOrder")
     fun observeIn(fromEpochDay: Long, toEpochDay: Long): Flow<List<HabitEntity>>
 
+    // Suspend twins of the three observers above. Every observation is seeded with one of
+    // these so its first emission comes from a real read rather than from an invalidation
+    // arriving -- which on wasmJs it does not.
+    @Query("SELECT * FROM habit WHERE retiredOnEpochDay IS NULL ORDER BY sortOrder")
+    suspend fun getActive(): List<HabitEntity>
+
+    @Query("SELECT * FROM habit WHERE effectiveFromEpochDay <= :epochDay AND (retiredOnEpochDay IS NULL OR retiredOnEpochDay > :epochDay) ORDER BY sortOrder")
+    suspend fun getOn(epochDay: Long): List<HabitEntity>
+
+    @Query("SELECT * FROM habit WHERE effectiveFromEpochDay <= :toEpochDay AND (retiredOnEpochDay IS NULL OR retiredOnEpochDay > :fromEpochDay) ORDER BY sortOrder")
+    suspend fun getIn(fromEpochDay: Long, toEpochDay: Long): List<HabitEntity>
+
     // Seeding depends on whether any revision ever existed, including retired ones.
     @Query("SELECT EXISTS(SELECT 1 FROM habit)")
     suspend fun hasAny(): Boolean

@@ -48,3 +48,36 @@ android {
         versionName = "1.0"
     }
 }
+
+// ---------------------------------------------------------------------------
+// Layering enforcement.
+//
+// domain/ is the innermost layer: it may see the Kotlin stdlib, kotlinx-datetime,
+// kotlinx-coroutines, and itself. Nothing else. The detector lives in buildSrc so it
+// can be unit tested; this only configures it.
+//
+// It runs before every Kotlin compilation on both targets, so `assembleDebug` and
+// `wasmJsBrowserDistribution` both fail on a violation.
+// ---------------------------------------------------------------------------
+
+val checkDomainPurity = tasks.register<dev.ahmad.wird.gradle.CheckDomainPurityTask>("checkDomainPurity") {
+    group = "verification"
+    description = "Fails the build if domain/ depends on anything outside the Kotlin stdlib, kotlinx-datetime, kotlinx-coroutines or domain/ itself."
+    domainSources.from(
+        layout.projectDirectory.dir("src/commonMain/kotlin/dev/ahmad/wird/domain").asFileTree,
+    )
+    allowedImportPrefixes.set(
+        listOf(
+            "kotlin.",
+            "kotlinx.datetime.",
+            "kotlinx.coroutines.",
+            "dev.ahmad.wird.domain.",
+        ),
+    )
+    report.set(layout.buildDirectory.file("reports/layering/domain-purity.txt"))
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask<*>>().configureEach {
+    dependsOn(checkDomainPurity)
+}
+tasks.named("check") { dependsOn(checkDomainPurity) }

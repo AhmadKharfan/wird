@@ -56,4 +56,8 @@ interface HabitDao {
     // Presentation order applies consistently to current and historical views.
     @Query("UPDATE habit SET sortOrder = :sortOrder WHERE habitId = :habitId")
     suspend fun setSortOrder(habitId: String, sortOrder: Int)
+
+    // Name and icon are presentational, so like sortOrder they apply to every revision.
+    @Query("UPDATE habit SET name = :name, iconKey = :iconKey WHERE habitId = :habitId")
+    suspend fun setAppearance(habitId: String, name: String, iconKey: String)
 }

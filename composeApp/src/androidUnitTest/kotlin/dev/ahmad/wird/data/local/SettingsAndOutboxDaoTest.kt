@@ -27,7 +27,7 @@ class SettingsAndOutboxDaoTest {
         latitude = null,
         longitude = null,
         calculationMethod = "UMM_AL_QURA",
-        privacyMode = "OPEN",
+        privacyMode = "POINTS_ONLY",
         updatedAt = updatedAt,
     )
 

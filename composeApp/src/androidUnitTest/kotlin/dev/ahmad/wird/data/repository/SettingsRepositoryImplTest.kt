@@ -4,6 +4,7 @@ import dev.ahmad.wird.data.local.createTestDatabase
 import dev.ahmad.wird.domain.model.AppSettings
 import dev.ahmad.wird.domain.model.Coordinates
 import dev.ahmad.wird.domain.model.NumeralSystem
+import dev.ahmad.wird.domain.model.PrivacyMode
 import dev.ahmad.wird.domain.model.ThemeMode
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -49,10 +50,10 @@ class SettingsRepositoryImplTest {
     fun appliesATransformOnTopOfTheDefaultsOnAFreshInstall() = runTest {
         // The transform is handed the defaults, so a caller never has to check whether a
         // row exists yet.
-        repository.update { it.copy(numeralSystem = NumeralSystem.WESTERN) }
+        repository.update { it.copy(numeralSystem = NumeralSystem.ARABIC_INDIC) }
 
         val stored = repository.observeSettings().first()
-        assertEquals(NumeralSystem.WESTERN, stored.numeralSystem)
+        assertEquals(NumeralSystem.ARABIC_INDIC, stored.numeralSystem)
         assertEquals(AppSettings.DEFAULTS.themeMode, stored.themeMode)
     }
 
@@ -61,11 +62,11 @@ class SettingsRepositoryImplTest {
         // Read-modify-write is the reason this takes a transform rather than a setter per
         // field: two changes must not clobber each other.
         repository.update { it.copy(themeMode = ThemeMode.DARK) }
-        repository.update { it.copy(numeralSystem = NumeralSystem.WESTERN) }
+        repository.update { it.copy(numeralSystem = NumeralSystem.ARABIC_INDIC) }
 
         val stored = repository.observeSettings().first()
         assertEquals(ThemeMode.DARK, stored.themeMode)
-        assertEquals(NumeralSystem.WESTERN, stored.numeralSystem)
+        assertEquals(NumeralSystem.ARABIC_INDIC, stored.numeralSystem)
     }
 
     @Test
@@ -105,7 +106,7 @@ class SettingsRepositoryImplTest {
     @Test
     fun queuesEverySettingsChange() = runTest {
         repository.update { it.copy(themeMode = ThemeMode.DARK) }
-        repository.update { it.copy(numeralSystem = NumeralSystem.WESTERN) }
+        repository.update { it.copy(numeralSystem = NumeralSystem.ARABIC_INDIC) }
 
         assertEquals(2, database.outboxDao().count())
     }
@@ -118,5 +119,14 @@ class SettingsRepositoryImplTest {
 
         assertEquals("settings", queued.entityType)
         assertEquals("settings", queued.entityId)
+    }
+
+    @Test
+    fun keepsANickname() = runTest {
+        repository.update { it.copy(privacyMode = PrivacyMode.NICKNAME, nickname = "أبو عمر") }
+
+        val stored = repository.observeSettings().first()
+        assertEquals(PrivacyMode.NICKNAME, stored.privacyMode)
+        assertEquals("أبو عمر", stored.nickname)
     }
 }

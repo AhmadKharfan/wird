@@ -51,6 +51,7 @@ class SettingsRepositoryImpl(
                 put("longitude", JsonPrimitive(updated.location?.longitude))
                 put("calculationMethod", JsonPrimitive(updated.calculationMethod.name))
                 put("privacyMode", JsonPrimitive(updated.privacyMode.name))
+                put("nickname", JsonPrimitive(updated.nickname))
                 put("updatedAt", JsonPrimitive(writtenAt))
             },
         )

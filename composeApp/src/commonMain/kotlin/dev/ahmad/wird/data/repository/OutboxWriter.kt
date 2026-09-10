@@ -43,5 +43,6 @@ class OutboxWriter(
         const val OP_UPSERT = "upsert"
         const val OP_REORDER = "reorder"
         const val OP_SET_ACTIVE = "setActive"
+        const val OP_APPEARANCE = "appearance"
     }
 }

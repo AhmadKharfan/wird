@@ -4,6 +4,7 @@ import dev.ahmad.wird.domain.usecase.CalculateBadgesUseCase
 import dev.ahmad.wird.domain.usecase.CalculateDayStatsUseCase
 import dev.ahmad.wird.domain.usecase.CalculateHabitCommitmentUseCase
 import dev.ahmad.wird.domain.usecase.CalculateStreakUseCase
+import dev.ahmad.wird.domain.usecase.CompleteOnboardingUseCase
 import dev.ahmad.wird.domain.usecase.ExportDataUseCase
 import dev.ahmad.wird.domain.usecase.GetPrayerTimesUseCase
 import dev.ahmad.wird.domain.usecase.LoadBadgesUseCase
@@ -13,6 +14,7 @@ import dev.ahmad.wird.domain.usecase.ObserveDayUseCase
 import dev.ahmad.wird.domain.usecase.ObserveHabitCommitmentsUseCase
 import dev.ahmad.wird.domain.usecase.ObserveLeaderboardUseCase
 import dev.ahmad.wird.domain.usecase.ObserveMonthHeatmapUseCase
+import dev.ahmad.wird.domain.usecase.ObserveOnboardingNeededUseCase
 import dev.ahmad.wird.domain.usecase.ObserveRecentDaysUseCase
 import dev.ahmad.wird.domain.usecase.ObserveSettingsUseCase
 import dev.ahmad.wird.domain.usecase.ObserveStreakUseCase
@@ -41,6 +43,10 @@ val domainModule = module {
     factory { ToggleHabitUseCase(entries = get()) }
     factory { SetCounterValueUseCase(entries = get()) }
     factory { SeedDefaultRoutineUseCase(habits = get(), settings = get()) }
+
+    // --- onboarding -----------------------------------------------------------------------
+    factory { CompleteOnboardingUseCase(seedDefaultRoutine = get(), settings = get(), clock = get(), zone = get()) }
+    factory { ObserveOnboardingNeededUseCase(settings = get(), habits = get()) }
 
     // --- managing the routine -------------------------------------------------------------
     factory { ObserveActiveHabitsUseCase(habits = get()) }

@@ -5,13 +5,21 @@ import dev.ahmad.wird.domain.repository.HabitRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.datetime.LocalDate
 
 /**
- * A real in-memory [HabitRepository] holding effective-dated revisions, so tests can put
- * a habit's history in and read back what was live on a given day.
+ * A real in-memory [HabitRepository] holding effective-dated revisions, so tests can put a
+ * habit's history in and read back what was live on a given day.
+ *
+ * Use [controls] to make it slow or make it fail. Revision handling mirrors the real
+ * repository: an edit closes the open revision and opens a new one rather than mutating a
+ * row, so a test that passes here means the same thing against Room.
  */
-class FakeHabitRepository(initial: List<Habit> = emptyList()) : HabitRepository {
+class FakeHabitRepository(
+    initial: List<Habit> = emptyList(),
+    val controls: FakeControls = FakeControls(),
+) : HabitRepository {
 
     private val stored = MutableStateFlow(initial)
 
@@ -19,28 +27,36 @@ class FakeHabitRepository(initial: List<Habit> = emptyList()) : HabitRepository 
     val habits: List<Habit> get() = stored.value
 
     override fun observeActiveHabits(): Flow<List<Habit>> =
-        stored.map { all -> all.filter { it.active }.sortedBy { it.sortOrder } }
+        stored.onStart { controls.gate() }
+            .map { all -> all.filter { it.active }.sortedBy { it.sortOrder } }
 
     override fun observeHabitsOn(day: LocalDate): Flow<List<Habit>> =
-        stored.map { all -> all.filter { it.isLiveOn(day) }.sortedBy { it.sortOrder } }
+        stored.onStart { controls.gate() }
+            .map { all -> all.filter { it.isLiveOn(day) }.sortedBy { it.sortOrder } }
 
     override fun observeHabitsIn(from: LocalDate, to: LocalDate): Flow<List<Habit>> =
-        stored.map { all ->
-            all.filter { habit ->
-                // Overlaps the range: started by the last day, and not retired before the first.
-                habit.effectiveFrom <= to && (habit.retiredOn == null || habit.retiredOn > from)
-            }.sortedBy { it.sortOrder }
-        }
+        stored.onStart { controls.gate() }
+            .map { all ->
+                all.filter { habit ->
+                    // Overlaps the range: started by the last day, not retired before the first.
+                    habit.effectiveFrom <= to && (habit.retiredOn == null || habit.retiredOn > from)
+                }.sortedBy { it.sortOrder }
+            }
+
+    override suspend fun hasAnyHabit(): Boolean {
+        controls.gate()
+        return stored.value.isNotEmpty()
+    }
 
     override suspend fun upsert(habit: Habit) {
+        controls.gate()
         val previous = stored.value.firstOrNull { it.id == habit.id && it.retiredOn == null }
         val closed = previous?.copy(retiredOn = habit.effectiveFrom)
         stored.value = stored.value.filterNot { it === previous } + listOfNotNull(closed) + habit
     }
 
-    override suspend fun hasAnyHabit(): Boolean = stored.value.isNotEmpty()
-
     override suspend fun reorder(habitIdsInOrder: List<String>) {
+        controls.gate()
         stored.value = stored.value.map { habit ->
             val position = habitIdsInOrder.indexOf(habit.id)
             if (position < 0) habit else habit.copy(sortOrder = position)
@@ -48,6 +64,7 @@ class FakeHabitRepository(initial: List<Habit> = emptyList()) : HabitRepository 
     }
 
     override suspend fun setActive(habitId: String, active: Boolean, asOf: LocalDate) {
+        controls.gate()
         stored.value = stored.value.map { habit ->
             when {
                 habit.id != habitId -> habit

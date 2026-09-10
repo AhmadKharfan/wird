@@ -9,6 +9,7 @@ import dev.ahmad.wird.domain.usecase.ObserveActiveHabitsUseCase
 import dev.ahmad.wird.domain.usecase.ObserveCircleTabVisibleUseCase
 import dev.ahmad.wird.domain.usecase.ObserveDayUseCase
 import dev.ahmad.wird.domain.usecase.ObserveHabitCommitmentsUseCase
+import dev.ahmad.wird.domain.usecase.ObserveLeaderboardUseCase
 import dev.ahmad.wird.domain.usecase.ObserveMonthHeatmapUseCase
 import dev.ahmad.wird.domain.usecase.ObserveRecentDaysUseCase
 import dev.ahmad.wird.domain.usecase.ObserveSettingsUseCase
@@ -47,6 +48,9 @@ val domainModule = module {
 
     // --- export ---------------------------------------------------------------------------
     factory { ExportDataUseCase(habits = get(), entries = get(), clock = get(), zone = get()) }
+
+    // --- circles ---------------------------------------------------------------------------
+    factory { ObserveLeaderboardUseCase(circles = get(), settings = get(), clock = get(), zone = get()) }
 
     // --- preferences ----------------------------------------------------------------------
     factory { ObserveSettingsUseCase(settings = get()) }

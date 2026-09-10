@@ -3,6 +3,7 @@ package dev.ahmad.wird.di
 import dev.ahmad.wird.domain.usecase.CalculateDayStatsUseCase
 import dev.ahmad.wird.domain.usecase.CalculateHabitCommitmentUseCase
 import dev.ahmad.wird.domain.usecase.CalculateStreakUseCase
+import dev.ahmad.wird.domain.usecase.ExportDataUseCase
 import dev.ahmad.wird.domain.usecase.GetPrayerTimesUseCase
 import dev.ahmad.wird.domain.usecase.ObserveActiveHabitsUseCase
 import dev.ahmad.wird.domain.usecase.ObserveCircleTabVisibleUseCase
@@ -43,6 +44,9 @@ val domainModule = module {
     factory { SaveHabitUseCase(habits = get(), clock = get(), zone = get(), newId = get()) }
     factory { ReorderHabitsUseCase(habits = get()) }
     factory { SetHabitActiveUseCase(habits = get(), clock = get(), zone = get()) }
+
+    // --- export ---------------------------------------------------------------------------
+    factory { ExportDataUseCase(habits = get(), entries = get(), clock = get(), zone = get()) }
 
     // --- preferences ----------------------------------------------------------------------
     factory { ObserveSettingsUseCase(settings = get()) }

@@ -112,10 +112,10 @@ queues run sequentially, one commit each. **The relay never commits — Claude d
 - Never commit secrets, keystores, `local.properties`, or `.env`.
 - Never commit without running the clean-code and test skills first.
 
-> The clean-code and test skills are **not installed** in this environment (see section 7).
-> Until they are, that last rule is unbacked: the substitute is the gate commands in
-> section 5, run by hand, plus a manual read of the diff. Do not treat the gates as
-> equivalent — they catch breakage, not poor design.
+> The test skill **is** installed (see section 7); the clean-code skill is not. So half of
+> that rule is now backed and half is not: the clean-code half remains a manual read of the
+> diff plus the gate commands in section 5. Do not treat the gates as equivalent to a design
+> review — they catch breakage, not poor design.
 
 ### Tooling note
 
@@ -242,8 +242,8 @@ These are load-bearing. Do not "clean them up" without re-verifying both targets
 
 ## 7. Skills — what is actually installed
 
-At `C:\Users\Ahmad\.agents\skills\` (the shared agent-skills location, **not**
-`~/.claude/skills`, so Claude Code does not auto-load them — read them from disk):
+User-global, at `C:\Users\Ahmad\.agents\skills\` — **not** `~/.claude/skills`, so Claude
+Code does not auto-load these; read them from disk:
 
 | Skill | Applies to |
 | --- | --- |
@@ -251,6 +251,16 @@ At `C:\Users\Ahmad\.agents\skills\` (the shared agent-skills location, **not**
 | `compose-multiplatform-patterns` | The `ui/` layer |
 | `find-skills` | Filling the gaps below |
 
-**Not installed:** no Kotlin Multiplatform skill, no clean-code review skill, no test
-discipline skill. Where section 4 says "run the clean-code and test skills," that gate is
-currently **unbacked** and must be installed or done by hand.
+Project-local, at `wird/.agents/skills/`, installed with `npx skills add` and symlinked
+into `wird/.claude/skills/` so Claude Code **does** auto-load them. All three paths are
+gitignored — they are per-machine tooling, so a fresh clone has to install them again:
+
+| Skill | Source | Applies to |
+| --- | --- | --- |
+| `test-driven-development` | `obra/superpowers` | Every feature and fix. Tests first, watched failing |
+| `kmp-boundaries` | `rcosteira79/android-skills` | expect/actual and platform boundaries |
+
+**Still not installed: no clean-code review skill.** Where section 2 says "run the
+clean-code and test skills," the test half is now backed and the clean-code half is a
+manual read of the diff. `chrisbanes/skills@kotlin-multiplatform-expect-actual` would not
+resolve and was skipped; `kmp-boundaries` covers that ground.

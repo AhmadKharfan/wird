@@ -17,7 +17,7 @@ class ToggleHabitUseCase(private val entries: EntryRepository) {
         when (habit.kind) {
             HabitKind.BOOL -> entries.toggle(habit.id, day)
             HabitKind.COUNTER -> {
-                val next = if (currentValue >= habit.target) 0 else currentValue + 1
+                val next = if (habit.isKeptBy(currentValue)) 0 else currentValue + 1
                 entries.setValue(habit.id, day, next)
             }
         }

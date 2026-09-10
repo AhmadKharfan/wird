@@ -7,6 +7,10 @@ package dev.ahmad.wird.domain.model
  * back does not make the user type it again. The nickname mode cannot be chosen without one,
  * though: a circle would then show the user under no name while telling them they chose to
  * be shown by one.
+ *
+ * [onboardingCompleted] records that the user finished onboarding, whichever routine they
+ * chose. It is what keeps a user who chose to start empty from being handed the default
+ * routine on the next launch.
  */
 data class AppSettings(
     val themeMode: ThemeMode,
@@ -15,6 +19,7 @@ data class AppSettings(
     val calculationMethod: CalculationMethod,
     val privacyMode: PrivacyMode,
     val nickname: String? = null,
+    val onboardingCompleted: Boolean = false,
 ) {
     init {
         require(privacyMode != PrivacyMode.NICKNAME || !nickname.isNullOrBlank()) {
@@ -41,6 +46,7 @@ data class AppSettings(
             calculationMethod = CalculationMethod.UMM_AL_QURA,
             privacyMode = PrivacyMode.POINTS_ONLY,
             nickname = null,
+            onboardingCompleted = false,
         )
     }
 }

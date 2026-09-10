@@ -43,6 +43,11 @@ class FakeHabitRepository(
                 }.sortedBy { it.sortOrder }
             }
 
+    override suspend fun allRevisions(): List<Habit> {
+        controls.gate()
+        return stored.value
+    }
+
     override suspend fun hasAnyHabit(): Boolean {
         controls.gate()
         return stored.value.isNotEmpty()

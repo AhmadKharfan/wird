@@ -10,21 +10,21 @@ import java.io.File
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * Migrates a real version-1 database and lets Room's own validator judge the result.
+ * Migrates real databases and lets Room's own validator judge the result.
  *
- * This is the point of the test: Room compares the migrated database against the exported
- * `schemas/2.json` when it opens and refuses to start on any difference, down to an index
- * name. So a migration whose SQL merely looks equivalent fails here rather than on a
- * user's device. Nothing below asserts the schema by hand — opening the database *is* the
- * assertion.
+ * Opening the database *is* the assertion for table shape: Room compares what it finds
+ * against the exported `schemas/3.json` and refuses to start on a mismatch. Index names it
+ * does **not** check — measured, not assumed — so those are asserted here directly.
  */
 class WirdMigrationTest {
 
-    /** The identity hash Room recorded for version 1, from `schemas/1.json`. */
+    /** Identity hashes Room recorded for each version, from the exported schema JSON. */
     private val version1IdentityHash = "143101baa8c252ddd525cfa6f5cfb122"
+    private val version2IdentityHash = "b47027428d3ebd522b7b1c305724144b"
 
     private val databaseFile: File =
         File.createTempFile("wird-migration-", ".db").also { it.delete() }
@@ -34,31 +34,49 @@ class WirdMigrationTest {
         databaseFile.delete()
     }
 
-    /** Builds the database exactly as version 1 left it, with one row of real data in it. */
-    private fun createVersion1Database() {
-        val connection: SQLiteConnection = BundledSQLiteDriver().open(databaseFile.absolutePath)
+    private fun withConnection(block: (SQLiteConnection) -> Unit) {
+        val connection = BundledSQLiteDriver().open(databaseFile.absolutePath)
         try {
-            connection.execSQL(
-                "CREATE TABLE IF NOT EXISTS `prayer_record` (`id` TEXT NOT NULL, " +
-                    "`epochDay` INTEGER NOT NULL, `prayer` TEXT NOT NULL, `status` TEXT NOT NULL, " +
-                    "PRIMARY KEY(`id`))",
-            )
-            connection.execSQL(
-                "CREATE TABLE IF NOT EXISTS room_master_table " +
-                    "(id INTEGER PRIMARY KEY, identity_hash TEXT)",
-            )
-            connection.execSQL(
-                "INSERT OR REPLACE INTO room_master_table (id, identity_hash) " +
-                    "VALUES(42, '$version1IdentityHash')",
-            )
-            connection.execSQL("PRAGMA user_version = 1")
-            connection.execSQL(
-                "INSERT INTO prayer_record (id, epochDay, prayer, status) " +
-                    "VALUES ('20706:FAJR', 20706, 'FAJR', 'ON_TIME')",
-            )
+            block(connection)
         } finally {
             connection.close()
         }
+    }
+
+    private fun SQLiteConnection.stampVersion(version: Int, identityHash: String) {
+        execSQL("CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY, identity_hash TEXT)")
+        execSQL("INSERT OR REPLACE INTO room_master_table (id, identity_hash) VALUES(42, '$identityHash')")
+        execSQL("PRAGMA user_version = $version")
+    }
+
+    private val createPrayerRecord =
+        "CREATE TABLE IF NOT EXISTS `prayer_record` (`id` TEXT NOT NULL, `epochDay` INTEGER NOT NULL, " +
+            "`prayer` TEXT NOT NULL, `status` TEXT NOT NULL, PRIMARY KEY(`id`))"
+
+    /** The database exactly as version 1 left it, with one row of real data in it. */
+    private fun createVersion1Database() = withConnection { connection ->
+        connection.execSQL(createPrayerRecord)
+        connection.stampVersion(1, version1IdentityHash)
+        connection.execSQL(
+            "INSERT INTO prayer_record (id, epochDay, prayer, status) " +
+                "VALUES ('20706:FAJR', 20706, 'FAJR', 'ON_TIME')",
+        )
+    }
+
+    /** The database as version 2 left it, carrying a habit and an entry worth keeping. */
+    private fun createVersion2Database() = withConnection { connection ->
+        connection.execSQL(createPrayerRecord)
+        MIGRATION_1_2_SQL.forEach(connection::execSQL)
+        connection.stampVersion(2, version2IdentityHash)
+        connection.execSQL(
+            "INSERT INTO habit (revisionId, habitId, name, kind, target, iconKey, sortOrder, " +
+                "effectiveFromEpochDay, retiredOnEpochDay, updatedAt) " +
+                "VALUES ('rev-1', 'duha', 'duha', 'BOOL', 1, 'duha', 0, 20700, NULL, 1)",
+        )
+        connection.execSQL(
+            "INSERT INTO entry (id, habitId, epochDay, value, updatedAt) " +
+                "VALUES ('entry-1', 'duha', 20706, 1, 1)",
+        )
     }
 
     private fun openMigratedDatabase(): WirdDatabase =
@@ -67,64 +85,97 @@ class WirdMigrationTest {
             .setDriver(BundledSQLiteDriver())
             .build()
 
-    @Test
-    fun migratesAVersionOneDatabaseWithoutLosingItsRows() = runTest {
-        createVersion1Database()
-
+    /** Opens the database, which runs the migrations and validates the result, then closes it. */
+    private suspend fun migrate() {
         val database = openMigratedDatabase()
-        // Forces the open, which runs MIGRATION_1_2 and then validates against schema 2.
-        val records = database.prayerRecordDao().observeByDay(20706).first()
+        database.entryDao().observeDay(0).first()
         database.close()
-
-        assertEquals(1, records.size)
-        assertEquals("FAJR", records.single().prayer)
-        assertEquals("ON_TIME", records.single().status)
     }
 
-    @Test
-    fun leavesTheNewTablesReadyToUse() = runTest {
-        createVersion1Database()
-
-        val database = openMigratedDatabase()
-        database.prayerRecordDao().observeByDay(20706).first()
-        database.close()
-
-        val connection = BundledSQLiteDriver().open(databaseFile.absolutePath)
+    private fun tableNames(): Set<String> {
         val tables = mutableSetOf<String>()
-        try {
+        withConnection { connection ->
             val statement = connection.prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
             while (statement.step()) tables += statement.getText(0)
             statement.close()
-        } finally {
-            connection.close()
+        }
+        return tables
+    }
+
+    // --- version 1 -----------------------------------------------------------------------
+
+    @Test
+    fun migratesAVersionOneDatabaseAllTheWayToTheCurrentVersion() = runTest {
+        createVersion1Database()
+
+        migrate()
+
+        assertTrue(tableNames().containsAll(listOf("habit", "entry", "settings", "outbox")))
+    }
+
+    @Test
+    fun dropsThePrayerRecordTableOnTheWayToVersionThree() = runTest {
+        // The one migration that destroys data. Every row it removes predates the habit
+        // model and is superseded rather than lost — the five prayers are a counter habit.
+        createVersion1Database()
+
+        migrate()
+
+        assertFalse(tableNames().contains("prayer_record"))
+    }
+
+    // --- version 2 --------------------------------------------------------------------------
+
+    @Test
+    fun keepsHabitsAndEntriesWrittenAtVersionTwo() = runTest {
+        // The check that matters for a real user: dropping the old table must not disturb
+        // anything the habit layer already wrote.
+        createVersion2Database()
+
+        val database = openMigratedDatabase()
+        val habits = database.habitDao().observeActive().first()
+        val entries = database.entryDao().observeDay(20706).first()
+        database.close()
+
+        assertEquals(listOf("duha"), habits.map { it.habitId })
+        assertEquals(listOf("entry-1"), entries.map { it.id })
+        assertEquals(1, entries.single().value)
+    }
+
+    // --- the result ---------------------------------------------------------------------------
+
+    @Test
+    fun recordsTheNewVersionOnDisk() = runTest {
+        createVersion1Database()
+
+        migrate()
+
+        var version = 0
+        withConnection { connection ->
+            val statement = connection.prepare("PRAGMA user_version")
+            statement.step()
+            version = statement.getInt(0)
+            statement.close()
         }
 
-        assertTrue(tables.containsAll(listOf("habit", "entry", "settings", "outbox")))
-        // Superseded but not yet dropped: it goes in version 3, with the code that reads it.
-        assertTrue(tables.contains("prayer_record"))
+        assertEquals(3, version)
     }
 
     @Test
     fun createsEveryIndexTheSchemaDeclares() = runTest {
         // Room's own validation does NOT check index names: renaming one opens cleanly and
-        // silently costs the query planner the index. Measured, not assumed — so the names
-        // are asserted here instead.
+        // silently costs the query planner the index. Measured, not assumed.
         createVersion1Database()
 
-        val database = openMigratedDatabase()
-        database.prayerRecordDao().observeByDay(20706).first()
-        database.close()
+        migrate()
 
-        val connection = BundledSQLiteDriver().open(databaseFile.absolutePath)
         val indices = mutableSetOf<String>()
-        try {
+        withConnection { connection ->
             val statement = connection.prepare(
                 "SELECT name FROM sqlite_master WHERE type = 'index' AND name NOT LIKE 'sqlite_%'",
             )
             while (statement.step()) indices += statement.getText(0)
             statement.close()
-        } finally {
-            connection.close()
         }
 
         assertEquals(
@@ -139,25 +190,31 @@ class WirdMigrationTest {
         )
     }
 
-    @Test
-    fun recordsTheNewVersionOnDisk() = runTest {
-        createVersion1Database()
-
-        val database = openMigratedDatabase()
-        database.prayerRecordDao().observeByDay(20706).first()
-        database.close()
-
-        val connection = BundledSQLiteDriver().open(databaseFile.absolutePath)
-        val version: Int
-        try {
-            val statement = connection.prepare("PRAGMA user_version")
-            statement.step()
-            version = statement.getInt(0)
-            statement.close()
-        } finally {
-            connection.close()
-        }
-
-        assertEquals(2, version)
+    private companion object {
+        /** The version-2 tables, copied from `schemas/2.json` exactly as the migration writes them. */
+        val MIGRATION_1_2_SQL = listOf(
+            "CREATE TABLE IF NOT EXISTS `habit` (`revisionId` TEXT NOT NULL, `habitId` TEXT NOT NULL, " +
+                "`name` TEXT NOT NULL, `kind` TEXT NOT NULL, `target` INTEGER NOT NULL, " +
+                "`iconKey` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL, " +
+                "`effectiveFromEpochDay` INTEGER NOT NULL, `retiredOnEpochDay` INTEGER, " +
+                "`updatedAt` INTEGER NOT NULL, PRIMARY KEY(`revisionId`))",
+            "CREATE INDEX IF NOT EXISTS `index_habit_habitId` ON `habit` (`habitId`)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_habit_habitId_effectiveFromEpochDay` " +
+                "ON `habit` (`habitId`, `effectiveFromEpochDay`)",
+            "CREATE TABLE IF NOT EXISTS `entry` (`id` TEXT NOT NULL, `habitId` TEXT NOT NULL, " +
+                "`epochDay` INTEGER NOT NULL, `value` INTEGER NOT NULL, " +
+                "`updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_entry_habitId_epochDay` " +
+                "ON `entry` (`habitId`, `epochDay`)",
+            "CREATE INDEX IF NOT EXISTS `index_entry_epochDay` ON `entry` (`epochDay`)",
+            "CREATE TABLE IF NOT EXISTS `settings` (`id` INTEGER NOT NULL, `themeMode` TEXT NOT NULL, " +
+                "`numeralSystem` TEXT NOT NULL, `latitude` REAL, `longitude` REAL, " +
+                "`calculationMethod` TEXT NOT NULL, `privacyMode` TEXT NOT NULL, " +
+                "`updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+            "CREATE TABLE IF NOT EXISTS `outbox` (`id` TEXT NOT NULL, `entityType` TEXT NOT NULL, " +
+                "`entityId` TEXT NOT NULL, `op` TEXT NOT NULL, `payload` TEXT NOT NULL, " +
+                "`createdAt` INTEGER NOT NULL, `attempts` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+            "CREATE INDEX IF NOT EXISTS `index_outbox_createdAt` ON `outbox` (`createdAt`)",
+        )
     }
 }

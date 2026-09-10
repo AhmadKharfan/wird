@@ -60,6 +60,9 @@ enum class NumeralSystem { WESTERN, ARABIC_INDIC }
 /**
  * Which convention fixes the twilight angles used for Fajr and Isha. These are domain
  * names; the data layer maps them onto whatever the prayer-time library calls them.
+ *
+ * Only methods the library can actually compute are offered. A method with no calculation
+ * behind it would be a setting that silently does something else.
  */
 enum class CalculationMethod {
     UMM_AL_QURA,
@@ -71,7 +74,6 @@ enum class CalculationMethod {
     KUWAIT,
     SINGAPORE,
     TURKEY,
-    TEHRAN,
     MOON_SIGHTING_COMMITTEE,
     NORTH_AMERICA,
 }

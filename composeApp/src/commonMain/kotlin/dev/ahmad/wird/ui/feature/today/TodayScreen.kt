@@ -80,7 +80,7 @@ private fun TodayContent(
                 ) {
                     item {
                         Text(
-                            text = "${state.points} / ${state.maxPoints}",
+                            text = state.scoreLabel,
                             style = MaterialTheme.typography.titleLarge,
                             modifier = Modifier.padding(bottom = Spacing.sm),
                         )

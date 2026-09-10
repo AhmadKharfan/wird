@@ -52,6 +52,7 @@ class SettingsRepositoryImpl(
                 put("calculationMethod", JsonPrimitive(updated.calculationMethod.name))
                 put("privacyMode", JsonPrimitive(updated.privacyMode.name))
                 put("nickname", JsonPrimitive(updated.nickname))
+                put("onboardingCompleted", JsonPrimitive(updated.onboardingCompleted))
                 put("updatedAt", JsonPrimitive(writtenAt))
             },
         )

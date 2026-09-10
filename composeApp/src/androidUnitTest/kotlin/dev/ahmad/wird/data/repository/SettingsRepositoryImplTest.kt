@@ -11,6 +11,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -119,6 +120,22 @@ class SettingsRepositoryImplTest {
 
         assertEquals("settings", queued.entityType)
         assertEquals("settings", queued.entityId)
+    }
+
+    @Test
+    fun keepsACompletedOnboarding() = runTest {
+        repository.update { it.copy(onboardingCompleted = true) }
+
+        assertEquals(true, repository.observeSettings().first().onboardingCompleted)
+    }
+
+    @Test
+    fun queuesACompletedOnboardingInThePayload() = runTest {
+        repository.update { it.copy(onboardingCompleted = true) }
+
+        val payload = database.outboxDao().peek(1).single().payload
+
+        assertTrue("\"onboardingCompleted\":true" in payload, payload)
     }
 
     @Test

@@ -9,9 +9,14 @@ import dev.ahmad.wird.domain.model.HabitKind
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Instant
 
 /**
  * Seeding runs on every launch and must plant the routine exactly once. "Once" is decided
@@ -22,6 +27,7 @@ import kotlin.test.assertTrue
 class SeedDefaultRoutineUseCaseTest {
 
     private val seedDay = LocalDate(2026, 1, 15)
+    private val zone = TimeZone.UTC
 
     private fun habit(id: String, retiredOn: LocalDate? = null) = Habit(
         id = id,
@@ -34,11 +40,25 @@ class SeedDefaultRoutineUseCaseTest {
         retiredOn = retiredOn,
     )
 
+    /** The seed, with its clock reading midday on [today]. */
+    private fun seed(
+        habits: FakeHabitRepository,
+        settings: FakeSettingsRepository = FakeSettingsRepository(),
+        today: LocalDate = seedDay,
+    ) = SeedDefaultRoutineUseCase(
+        habits,
+        settings,
+        clock = object : Clock {
+            override fun now(): Instant = today.atStartOfDayIn(zone) + 12.hours
+        },
+        zone = zone,
+    )
+
     @Test
     fun plantsTheWholeRoutineOnAnEmptyInstall() = runTest {
         val habits = FakeHabitRepository()
 
-        SeedDefaultRoutineUseCase(habits, FakeSettingsRepository())(seedDay)
+        seed(habits)()
 
         assertEquals(
             DefaultRoutine.habitsFrom(seedDay).map { it.name },
@@ -50,7 +70,7 @@ class SeedDefaultRoutineUseCaseTest {
     fun startsTheRoutineOnTheDayItSeeds() = runTest {
         val habits = FakeHabitRepository()
 
-        SeedDefaultRoutineUseCase(habits, FakeSettingsRepository())(seedDay)
+        seed(habits)()
 
         assertEquals(setOf(seedDay), habits.habits.map { it.effectiveFrom }.toSet())
     }
@@ -59,7 +79,7 @@ class SeedDefaultRoutineUseCaseTest {
     fun leavesAnInstallThatAlreadyHasHabitsAlone() = runTest {
         val habits = FakeHabitRepository(listOf(habit("mine")))
 
-        SeedDefaultRoutineUseCase(habits, FakeSettingsRepository())(seedDay)
+        seed(habits)()
 
         assertEquals(listOf("mine"), habits.habits.map { it.id })
     }
@@ -69,10 +89,9 @@ class SeedDefaultRoutineUseCaseTest {
         // Seeding is called on every launch, so running it again must be a no-op rather
         // than a second routine.
         val habits = FakeHabitRepository()
-        val seed = SeedDefaultRoutineUseCase(habits, FakeSettingsRepository())
 
-        seed(seedDay)
-        seed(LocalDate(2026, 1, 16))
+        seed(habits)()
+        seed(habits, today = LocalDate(2026, 1, 16))()
 
         assertEquals(11, habits.habits.size)
     }
@@ -84,7 +103,7 @@ class SeedDefaultRoutineUseCaseTest {
         val retired = DefaultRoutine.habitsFrom(seedDay).map { it.copy(retiredOn = seedDay) }
         val habits = FakeHabitRepository(retired)
 
-        SeedDefaultRoutineUseCase(habits, FakeSettingsRepository())(LocalDate(2026, 2, 1))
+        seed(habits, today = LocalDate(2026, 2, 1))()
 
         assertEquals(11, habits.habits.size)
         assertEquals(emptyList(), habits.observeActiveHabits().first())
@@ -98,7 +117,7 @@ class SeedDefaultRoutineUseCaseTest {
         val habits = FakeHabitRepository()
         val onboarded = FakeSettingsRepository(AppSettings.DEFAULTS.copy(onboardingCompleted = true))
 
-        SeedDefaultRoutineUseCase(habits, onboarded)(seedDay)
+        seed(habits, onboarded)()
 
         assertEquals(emptyList(), habits.habits)
     }
@@ -111,7 +130,7 @@ class SeedDefaultRoutineUseCaseTest {
         val habits = FakeHabitRepository()
         habits.controls.failAfter(calls = 2, error = IllegalStateException("disk full"))
 
-        runCatching { SeedDefaultRoutineUseCase(habits, FakeSettingsRepository())(seedDay) }
+        runCatching { seed(habits)() }
 
         assertTrue(habits.habits.isEmpty() || habits.habits.size == 11, "planted ${habits.habits.size} of 11")
     }
@@ -120,7 +139,7 @@ class SeedDefaultRoutineUseCaseTest {
     fun leavesTheSeededRoutineWorthFifteenPointsADay() = runTest {
         val habits = FakeHabitRepository()
 
-        SeedDefaultRoutineUseCase(habits, FakeSettingsRepository())(seedDay)
+        seed(habits)()
 
         assertEquals(15, habits.observeActiveHabits().first().sumOf { it.target })
     }

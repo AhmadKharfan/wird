@@ -26,8 +26,8 @@ class CompleteOnboardingUseCaseTest {
 
     private val habits = FakeHabitRepository()
     private val settings = FakeSettingsRepository()
-    private val seed = SeedDefaultRoutineUseCase(habits, settings)
-    private val complete = CompleteOnboardingUseCase(seed, settings, HistoryFixtures.clock, HistoryFixtures.zone)
+    private val seed = SeedDefaultRoutineUseCase(habits, settings, HistoryFixtures.clock, HistoryFixtures.zone)
+    private val complete = CompleteOnboardingUseCase(seed, settings)
 
     @Test
     fun plantsTheDefaultRoutineStartingTodayWhenChosen() = runTest {
@@ -53,10 +53,8 @@ class CompleteOnboardingUseCaseTest {
             val chosenSettings = FakeSettingsRepository()
             val chosenHabits = FakeHabitRepository()
             val completeWith = CompleteOnboardingUseCase(
-                SeedDefaultRoutineUseCase(chosenHabits, chosenSettings),
+                SeedDefaultRoutineUseCase(chosenHabits, chosenSettings, HistoryFixtures.clock, HistoryFixtures.zone),
                 chosenSettings,
-                HistoryFixtures.clock,
-                HistoryFixtures.zone,
             )
 
             completeWith(choice)
@@ -99,10 +97,8 @@ class CompleteOnboardingUseCaseTest {
     fun keepsEveryOtherSetting() = runTest {
         val arabicIndic = FakeSettingsRepository(AppSettings.DEFAULTS.copy(numeralSystem = NumeralSystem.ARABIC_INDIC))
         val completeWith = CompleteOnboardingUseCase(
-            SeedDefaultRoutineUseCase(habits, arabicIndic),
+            SeedDefaultRoutineUseCase(habits, arabicIndic, HistoryFixtures.clock, HistoryFixtures.zone),
             arabicIndic,
-            HistoryFixtures.clock,
-            HistoryFixtures.zone,
         )
 
         completeWith(RoutineChoice.EMPTY)

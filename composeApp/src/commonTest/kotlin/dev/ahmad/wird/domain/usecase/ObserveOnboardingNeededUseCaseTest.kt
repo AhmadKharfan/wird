@@ -62,10 +62,8 @@ class ObserveOnboardingNeededUseCaseTest {
         val watching = launch(UnconfinedTestDispatcher(testScheduler)) { needed(settings, habits).toList(answers) }
 
         CompleteOnboardingUseCase(
-            SeedDefaultRoutineUseCase(habits, settings),
+            SeedDefaultRoutineUseCase(habits, settings, HistoryFixtures.clock, HistoryFixtures.zone),
             settings,
-            HistoryFixtures.clock,
-            HistoryFixtures.zone,
         )(RoutineChoice.EMPTY)
         watching.cancel()
 

@@ -45,6 +45,12 @@ interface HabitRepository {
     suspend fun upsert(habit: Habit)
 
     /**
+     * [upsert]s every revision given: all of them, or none. Seeding a routine uses this, so a
+     * failure part-way cannot leave half a routine that already counts as "a habit has existed".
+     */
+    suspend fun upsertAll(revisions: List<Habit>)
+
+    /**
      * Whether any habit has ever existed, active or retired.
      *
      * Asked once at launch to decide whether the default routine still needs seeding. It

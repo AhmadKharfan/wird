@@ -6,8 +6,9 @@ import androidx.room3.RoomDatabase
 import androidx.room3.RoomDatabaseConstructor
 
 /**
- * Version 4 gives settings a nickname and renames the privacy modes. Version 3 dropped
- * `prayer_record`, which habit and entry superseded.
+ * Version 5 records in settings whether onboarding was finished. Version 4 gave settings a
+ * nickname and renamed the privacy modes. Version 3 dropped `prayer_record`, which habit and
+ * entry superseded.
  */
 @Database(
     entities = [
@@ -16,7 +17,7 @@ import androidx.room3.RoomDatabaseConstructor
         SettingsEntity::class,
         OutboxEntity::class,
     ],
-    version = 4,
+    version = 5,
 )
 @ConstructedBy(WirdDatabaseConstructor::class)
 abstract class WirdDatabase : RoomDatabase() {

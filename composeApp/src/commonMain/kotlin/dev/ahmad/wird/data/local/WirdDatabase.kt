@@ -25,6 +25,10 @@ import androidx.room3.RoomDatabaseConstructor
 @ConstructedBy(WirdDatabaseConstructor::class)
 abstract class WirdDatabase : RoomDatabase() {
     abstract fun prayerRecordDao(): PrayerRecordDao
+    abstract fun habitDao(): HabitDao
+    abstract fun entryDao(): EntryDao
+    abstract fun settingsDao(): SettingsDao
+    abstract fun outboxDao(): OutboxDao
 }
 
 /** Room generates the `actual` for each target; do not hand-write one. */

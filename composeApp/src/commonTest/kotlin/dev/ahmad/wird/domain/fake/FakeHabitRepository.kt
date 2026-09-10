@@ -38,6 +38,8 @@ class FakeHabitRepository(initial: List<Habit> = emptyList()) : HabitRepository 
         stored.value = stored.value.filterNot { it === previous } + listOfNotNull(closed) + habit
     }
 
+    override suspend fun hasAnyHabit(): Boolean = stored.value.isNotEmpty()
+
     override suspend fun reorder(habitIdsInOrder: List<String>) {
         stored.value = stored.value.map { habit ->
             val position = habitIdsInOrder.indexOf(habit.id)

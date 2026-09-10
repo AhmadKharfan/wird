@@ -54,7 +54,7 @@ class TodayViewModelNumeralsTest {
                 HistoryFixtures.zone,
             ),
             toggleHabit = ToggleHabitUseCase(entries),
-            seedDefaultRoutine = SeedDefaultRoutineUseCase(habits),
+            seedDefaultRoutine = SeedDefaultRoutineUseCase(habits, settings),
             calculateDayStats = CalculateDayStatsUseCase(),
             observeSettings = ObserveSettingsUseCase(settings),
             clock = HistoryFixtures.clock,

@@ -40,7 +40,7 @@ val domainModule = module {
     factory { ObserveTodayUseCase(observeDay = get(), clock = get(), zone = get()) }
     factory { ToggleHabitUseCase(entries = get()) }
     factory { SetCounterValueUseCase(entries = get()) }
-    factory { SeedDefaultRoutineUseCase(habits = get()) }
+    factory { SeedDefaultRoutineUseCase(habits = get(), settings = get()) }
 
     // --- managing the routine -------------------------------------------------------------
     factory { ObserveActiveHabitsUseCase(habits = get()) }

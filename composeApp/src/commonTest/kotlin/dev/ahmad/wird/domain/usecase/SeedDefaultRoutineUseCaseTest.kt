@@ -1,6 +1,8 @@
 package dev.ahmad.wird.domain.usecase
 
 import dev.ahmad.wird.domain.fake.FakeHabitRepository
+import dev.ahmad.wird.domain.fake.FakeSettingsRepository
+import dev.ahmad.wird.domain.model.AppSettings
 import dev.ahmad.wird.domain.model.DefaultRoutine
 import dev.ahmad.wird.domain.model.Habit
 import dev.ahmad.wird.domain.model.HabitKind
@@ -35,7 +37,7 @@ class SeedDefaultRoutineUseCaseTest {
     fun plantsTheWholeRoutineOnAnEmptyInstall() = runTest {
         val habits = FakeHabitRepository()
 
-        SeedDefaultRoutineUseCase(habits)(seedDay)
+        SeedDefaultRoutineUseCase(habits, FakeSettingsRepository())(seedDay)
 
         assertEquals(
             DefaultRoutine.habitsFrom(seedDay).map { it.name },
@@ -47,7 +49,7 @@ class SeedDefaultRoutineUseCaseTest {
     fun startsTheRoutineOnTheDayItSeeds() = runTest {
         val habits = FakeHabitRepository()
 
-        SeedDefaultRoutineUseCase(habits)(seedDay)
+        SeedDefaultRoutineUseCase(habits, FakeSettingsRepository())(seedDay)
 
         assertEquals(setOf(seedDay), habits.habits.map { it.effectiveFrom }.toSet())
     }
@@ -56,7 +58,7 @@ class SeedDefaultRoutineUseCaseTest {
     fun leavesAnInstallThatAlreadyHasHabitsAlone() = runTest {
         val habits = FakeHabitRepository(listOf(habit("mine")))
 
-        SeedDefaultRoutineUseCase(habits)(seedDay)
+        SeedDefaultRoutineUseCase(habits, FakeSettingsRepository())(seedDay)
 
         assertEquals(listOf("mine"), habits.habits.map { it.id })
     }
@@ -66,7 +68,7 @@ class SeedDefaultRoutineUseCaseTest {
         // Seeding is called on every launch, so running it again must be a no-op rather
         // than a second routine.
         val habits = FakeHabitRepository()
-        val seed = SeedDefaultRoutineUseCase(habits)
+        val seed = SeedDefaultRoutineUseCase(habits, FakeSettingsRepository())
 
         seed(seedDay)
         seed(LocalDate(2026, 1, 16))
@@ -81,17 +83,30 @@ class SeedDefaultRoutineUseCaseTest {
         val retired = DefaultRoutine.habitsFrom(seedDay).map { it.copy(retiredOn = seedDay) }
         val habits = FakeHabitRepository(retired)
 
-        SeedDefaultRoutineUseCase(habits)(LocalDate(2026, 2, 1))
+        SeedDefaultRoutineUseCase(habits, FakeSettingsRepository())(LocalDate(2026, 2, 1))
 
         assertEquals(11, habits.habits.size)
         assertEquals(emptyList(), habits.observeActiveHabits().first())
     }
 
     @Test
+    fun plantsNothingForAUserWhoFinishedOnboardingWithNoRoutine() = runTest {
+        // Starting empty leaves no habit behind, so "no habit has ever existed" alone would
+        // hand this user the default routine on their next launch. Finishing onboarding is
+        // the decision, whatever it planted.
+        val habits = FakeHabitRepository()
+        val onboarded = FakeSettingsRepository(AppSettings.DEFAULTS.copy(onboardingCompleted = true))
+
+        SeedDefaultRoutineUseCase(habits, onboarded)(seedDay)
+
+        assertEquals(emptyList(), habits.habits)
+    }
+
+    @Test
     fun leavesTheSeededRoutineWorthFifteenPointsADay() = runTest {
         val habits = FakeHabitRepository()
 
-        SeedDefaultRoutineUseCase(habits)(seedDay)
+        SeedDefaultRoutineUseCase(habits, FakeSettingsRepository())(seedDay)
 
         assertEquals(15, habits.observeActiveHabits().first().sumOf { it.target })
     }

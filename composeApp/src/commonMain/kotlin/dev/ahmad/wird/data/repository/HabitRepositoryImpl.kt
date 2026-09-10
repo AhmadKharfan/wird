@@ -44,6 +44,8 @@ class HabitRepositoryImpl(
 
     override suspend fun hasAnyHabit(): Boolean = habits.hasAny()
 
+    override suspend fun allRevisions(): List<Habit> = habits.getAll().map { it.toDomain() }
+
     override suspend fun upsert(habit: Habit) {
         // Close whatever is currently open before opening the new revision, so the two
         // never overlap on a day and no day can see the habit twice. Retiring only ever

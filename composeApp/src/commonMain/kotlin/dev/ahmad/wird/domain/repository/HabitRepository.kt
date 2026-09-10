@@ -54,6 +54,13 @@ interface HabitRepository {
     suspend fun hasAnyHabit(): Boolean
 
     /**
+     * Every revision of every habit, retired ones included, for the export. The one read
+     * not windowed to the days in force: a backup has to hold history the screens no
+     * longer show.
+     */
+    suspend fun allRevisions(): List<Habit>
+
+    /**
      * Renumbers [Habit.sortOrder] to match the given order. Reordering is presentational,
      * so it applies to every revision of each habit rather than opening a new one.
      */

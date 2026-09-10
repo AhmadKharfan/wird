@@ -25,6 +25,16 @@ interface HabitRepository {
     fun observeHabitsOn(day: LocalDate): Flow<List<Habit>>
 
     /**
+     * Every revision live on at least one day between [from] and [to], both inclusive.
+     *
+     * The range form exists so a week or a month is one query rather than one per day.
+     * Callers hand the whole list to a snapshot per day and let
+     * [dev.ahmad.wird.domain.model.DaySnapshot.scheduledHabits] pick out the revision that
+     * applies to each; [observeHabitsOn] is the single-day case the Today screen uses.
+     */
+    fun observeHabitsIn(from: LocalDate, to: LocalDate): Flow<List<Habit>>
+
+    /**
      * Creates a habit, or revises one that already exists.
      *
      * Revising never edits a past row. The implementation closes the current revision at

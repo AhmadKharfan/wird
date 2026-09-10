@@ -24,6 +24,14 @@ class FakeHabitRepository(initial: List<Habit> = emptyList()) : HabitRepository 
     override fun observeHabitsOn(day: LocalDate): Flow<List<Habit>> =
         stored.map { all -> all.filter { it.isLiveOn(day) }.sortedBy { it.sortOrder } }
 
+    override fun observeHabitsIn(from: LocalDate, to: LocalDate): Flow<List<Habit>> =
+        stored.map { all ->
+            all.filter { habit ->
+                // Overlaps the range: started by the last day, and not retired before the first.
+                habit.effectiveFrom <= to && (habit.retiredOn == null || habit.retiredOn > from)
+            }.sortedBy { it.sortOrder }
+        }
+
     override suspend fun upsert(habit: Habit) {
         val previous = stored.value.firstOrNull { it.id == habit.id && it.retiredOn == null }
         val closed = previous?.copy(retiredOn = habit.effectiveFrom)

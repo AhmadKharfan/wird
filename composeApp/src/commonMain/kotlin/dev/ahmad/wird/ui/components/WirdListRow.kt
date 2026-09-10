@@ -1,6 +1,5 @@
 package dev.ahmad.wird.ui.components
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
@@ -19,6 +18,11 @@ import dev.ahmad.wird.ui.theme.Spacing
 /**
  * Stateless row with slot content. Enforces the 48dp touch-target floor so callers
  * cannot accidentally ship a smaller tap area.
+ *
+ * The click belongs to the `Surface` itself rather than to the modifier handed to it: a
+ * `clickable` on that modifier sits outside the surface's own clip, so its press ripple was
+ * drawn square past the rounded corners. On the surface, the ripple is clipped to the shape
+ * and the row reads as a button to accessibility services.
  */
 @Composable
 fun WirdListRow(
@@ -28,10 +32,10 @@ fun WirdListRow(
     trailing: @Composable () -> Unit = {},
 ) {
     Surface(
+        onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
-            .defaultMinSize(minHeight = Sizes.minTouchTarget)
-            .clickable(onClick = onClick),
+            .defaultMinSize(minHeight = Sizes.minTouchTarget),
         shape = RoundedCornerShape(Radius.md),
         color = MaterialTheme.colorScheme.surface,
     ) {

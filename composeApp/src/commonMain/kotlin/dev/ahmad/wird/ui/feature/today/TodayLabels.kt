@@ -6,7 +6,7 @@ import dev.ahmad.wird.ui.format.NumeralFormatter
 
 /** UI wording lives in ui/. The domain carries no display text. */
 fun Habit.valueLabel(value: Int, numerals: NumeralFormatter): String = when (kind) {
-    HabitKind.BOOL -> if (value > 0) "تم" else "لم يتم"
+    HabitKind.BOOL -> if (isKeptBy(value)) "تم" else "لم يتم"
     HabitKind.COUNTER -> "${numerals.format(value)} / ${numerals.format(target)}"
 }
 

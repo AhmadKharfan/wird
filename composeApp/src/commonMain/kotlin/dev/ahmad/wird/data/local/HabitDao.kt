@@ -53,9 +53,13 @@ interface HabitDao {
     @Query("UPDATE habit SET retiredOnEpochDay = :epochDay WHERE habitId = :habitId AND retiredOnEpochDay IS NULL")
     suspend fun retire(habitId: String, epochDay: Long)
 
-    // Reinstatement reopens the stored revision for this stable habit identity.
-    @Query("UPDATE habit SET retiredOnEpochDay = NULL WHERE habitId = :habitId")
-    suspend fun reinstate(habitId: String)
+    // The newest revision, retired or not: the one a reinstatement carries forward.
+    @Query("SELECT * FROM habit WHERE habitId = :habitId ORDER BY effectiveFromEpochDay DESC LIMIT 1")
+    suspend fun latestRevision(habitId: String): HabitEntity?
+
+    // Reopens exactly one revision; every other retirement boundary is history and stays.
+    @Query("UPDATE habit SET retiredOnEpochDay = NULL WHERE revisionId = :revisionId")
+    suspend fun reopen(revisionId: String)
 
     // Presentation order applies consistently to current and historical views.
     @Query("UPDATE habit SET sortOrder = :sortOrder WHERE habitId = :habitId")

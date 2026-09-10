@@ -193,12 +193,25 @@ class HabitDaoTest {
     }
 
     @Test
-    fun reinstatesAHabitByReopeningItsRevision() = runTest {
-        dao.insert(habit("r1", retiredOn = 15))
+    fun findsTheNewestRevisionWhetherRetiredOrNot() = runTest {
+        dao.insert(habit("old", effectiveFrom = 10, retiredOn = 12))
+        dao.insert(habit("new", effectiveFrom = 12, retiredOn = 15))
 
-        dao.reinstate("duha")
+        assertEquals("new", dao.latestRevision("duha")?.revisionId)
+    }
 
-        assertEquals(listOf("r1"), dao.observeActive().first().map { it.revisionId })
+    @Test
+    fun reopensOneRevisionAndLeavesEveryOtherBoundary() = runTest {
+        // Every other retirement date is history. Clearing them all would leave two
+        // revisions live on the same day.
+        dao.insert(habit("old", effectiveFrom = 10, retiredOn = 12))
+        dao.insert(habit("new", effectiveFrom = 12, retiredOn = 15))
+
+        dao.reopen("new")
+
+        val byId = dao.observeIn(0, 100).first().associateBy { it.revisionId }
+        assertEquals(12, byId.getValue("old").retiredOnEpochDay)
+        assertNull(byId.getValue("new").retiredOnEpochDay)
     }
 
     @Test

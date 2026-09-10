@@ -102,5 +102,5 @@ val domainModule = module {
         )
     }
 
-    factory { GetPrayerTimesUseCase(repository = get()) }
+    factory { GetPrayerTimesUseCase(repository = get(), settings = get()) }
 }

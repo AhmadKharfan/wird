@@ -1,6 +1,7 @@
 package dev.ahmad.wird.ui.navigation
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -54,7 +55,9 @@ fun WirdNavGraph(
         NavHost(
             navController = navController,
             startDestination = TodayRoute,
-            modifier = Modifier.padding(padding),
+            // Consumed as well as applied: each screen has its own Scaffold, which would
+            // otherwise pad for the system bars a second time.
+            modifier = Modifier.padding(padding).consumeWindowInsets(padding),
         ) {
             composable<TodayRoute> { TodayScreen() }
             composable<HistoryRoute> { EmptyDestination() }

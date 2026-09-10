@@ -2,12 +2,15 @@ package dev.ahmad.wird.domain.usecase
 
 import dev.ahmad.wird.domain.model.DaySnapshot
 import dev.ahmad.wird.domain.util.plusDays
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
@@ -32,6 +35,13 @@ class ObserveTodayUseCase(
     private val observeDay: ObserveDayUseCase,
     private val clock: Clock,
     private val zone: TimeZone,
+    /**
+     * Where the wait for midnight runs: real time unless a test says otherwise. A test
+     * scheduler that drains its queue in virtual time would otherwise run a timer that
+     * re-arms itself every day for ever; only a test of the rollover itself passes its own
+     * dispatcher, to drive the wait in virtual time.
+     */
+    private val timer: CoroutineDispatcher = Dispatchers.Default,
 ) {
     operator fun invoke(): Flow<DaySnapshot> = days().flatMapLatest { observeDay(it) }
 
@@ -44,7 +54,9 @@ class ObserveTodayUseCase(
             val now = clock.now()
             val today = now.toLocalDateTime(zone).date
             emit(today)
-            delay(today.plusDays(1).atStartOfDayIn(zone) - now)
+            // Only the wait moves to the timer. Today is emitted where the collector runs, so
+            // the first snapshot arrives the moment it is asked for.
+            withContext(timer) { delay(today.plusDays(1).atStartOfDayIn(zone) - now) }
         }
     }.distinctUntilChanged()
 }

@@ -5,7 +5,14 @@ import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 val uiModule = module {
-    // Explicit rather than viewModelOf: TodayViewModel takes a Clock and a TimeZone
-    // with defaults that Koin must not try to resolve.
-    viewModel { TodayViewModel(getPrayerTimes = get(), observeRecords = get(), recordPrayer = get()) }
+    viewModel {
+        TodayViewModel(
+            observeToday = get(),
+            toggleHabit = get(),
+            seedDefaultRoutine = get(),
+            calculateDayStats = get(),
+            clock = get(),
+            zone = get(),
+        )
+    }
 }

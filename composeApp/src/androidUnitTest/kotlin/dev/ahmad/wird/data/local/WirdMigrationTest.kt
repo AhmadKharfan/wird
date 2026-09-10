@@ -28,6 +28,7 @@ class WirdMigrationTest {
     private val version1IdentityHash = "143101baa8c252ddd525cfa6f5cfb122"
     private val version2IdentityHash = "b47027428d3ebd522b7b1c305724144b"
     private val version3IdentityHash = "e08863f4ea16054e866a25386e450e11"
+    private val version4IdentityHash = "5d57a998ae58f26903a13dd5b9a8119f"
 
     private val databaseFile: File =
         File.createTempFile("wird-migration-", ".db").also { it.delete() }
@@ -90,6 +91,18 @@ class WirdMigrationTest {
             "INSERT INTO settings (id, themeMode, numeralSystem, latitude, longitude, " +
                 "calculationMethod, privacyMode, updatedAt) " +
                 "VALUES (0, 'DARK', 'ARABIC_INDIC', NULL, NULL, 'UMM_AL_QURA', '$privacyMode', 1)",
+        )
+    }
+
+    /** The database as a fresh version 4 install left it, with a customised settings row. */
+    private fun createVersion4Database() = withConnection { connection ->
+        HABIT_LAYER_TABLES.filterNot { it.startsWith(CREATE_SETTINGS) }.forEach(connection::execSQL)
+        connection.execSQL(VERSION_4_SETTINGS)
+        connection.stampVersion(4, version4IdentityHash)
+        connection.execSQL(
+            "INSERT INTO settings (id, themeMode, numeralSystem, latitude, longitude, " +
+                "calculationMethod, privacyMode, nickname, updatedAt) " +
+                "VALUES (0, 'DARK', 'ARABIC_INDIC', NULL, NULL, 'UMM_AL_QURA', 'NICKNAME', 'سالم', 1)",
         )
     }
 
@@ -205,6 +218,28 @@ class WirdMigrationTest {
         assertEquals("ARABIC_INDIC", settings?.numeralSystem)
     }
 
+    // --- version 4: settings learn whether onboarding was finished -------------------------------
+
+    @Test
+    fun startsAnUpgradedInstallWithOnboardingNotRecorded() = runTest {
+        // Nobody finished onboarding before it existed. An upgraded install with habits is
+        // still never sent through it, because onboarding is only needed on an install that
+        // has neither the flag nor any habit — the flag's absence alone decides nothing.
+        createVersion4Database()
+
+        assertEquals(false, migratedSettings()?.onboardingCompleted)
+    }
+
+    @Test
+    fun keepsEverySettingOfAVersionFourRow() = runTest {
+        createVersion4Database()
+
+        val settings = migratedSettings()
+        assertEquals("DARK", settings?.themeMode)
+        assertEquals("NICKNAME", settings?.privacyMode)
+        assertEquals("سالم", settings?.nickname)
+    }
+
     // --- the result ---------------------------------------------------------------------------
 
     @Test
@@ -221,7 +256,7 @@ class WirdMigrationTest {
             statement.close()
         }
 
-        assertEquals(4, version)
+        assertEquals(5, version)
     }
 
     @Test
@@ -254,6 +289,15 @@ class WirdMigrationTest {
     }
 
     private companion object {
+        const val CREATE_SETTINGS = "CREATE TABLE IF NOT EXISTS `settings`"
+
+        /** The settings table exactly as a fresh version 4 install created it, from the exported schema. */
+        const val VERSION_4_SETTINGS =
+            "CREATE TABLE IF NOT EXISTS `settings` (`id` INTEGER NOT NULL, `themeMode` TEXT NOT NULL, " +
+                "`numeralSystem` TEXT NOT NULL, `latitude` REAL, `longitude` REAL, " +
+                "`calculationMethod` TEXT NOT NULL, `privacyMode` TEXT NOT NULL, `nickname` TEXT, " +
+                "`updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))"
+
         /**
          * The four habit-layer tables exactly as versions 2 and 3 created them, copied from
          * the exported schema. Version 2 had these plus `prayer_record`; version 3 had only

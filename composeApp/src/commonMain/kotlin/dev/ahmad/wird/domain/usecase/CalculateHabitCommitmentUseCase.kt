@@ -10,9 +10,7 @@ import dev.ahmad.wird.domain.model.HabitCommitment
 class CalculateHabitCommitmentUseCase {
     operator fun invoke(habit: Habit, snapshots: List<DaySnapshot>): HabitCommitment {
         val liveSnapshots = snapshots.filter { habit.isLiveOn(it.day) }
-        val completedDays = liveSnapshots.count { snapshot ->
-            snapshot.valueFor(habit.id) >= habit.target
-        }
+        val completedDays = liveSnapshots.count { snapshot -> habit.isKeptBy(snapshot.valueFor(habit.id)) }
 
         return HabitCommitment(
             habit = habit,

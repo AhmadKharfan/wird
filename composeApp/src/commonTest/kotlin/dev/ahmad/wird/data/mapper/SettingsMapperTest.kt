@@ -26,6 +26,7 @@ class SettingsMapperTest {
         calculationMethod: String = "EGYPTIAN",
         privacyMode: String = "POINTS_ONLY",
         nickname: String? = null,
+        onboardingCompleted: Boolean = false,
     ) = SettingsEntity(
         themeMode = themeMode,
         numeralSystem = numeralSystem,
@@ -34,6 +35,7 @@ class SettingsMapperTest {
         calculationMethod = calculationMethod,
         privacyMode = privacyMode,
         nickname = nickname,
+        onboardingCompleted = onboardingCompleted,
         updatedAt = 1_768_000_000_000,
     )
 
@@ -96,6 +98,20 @@ class SettingsMapperTest {
     @Test
     fun readsABlankNicknameAsNoNickname() {
         assertNull(entity(nickname = "   ").toDomain().nickname)
+    }
+
+    // --- onboarding ---------------------------------------------------------------------------
+
+    @Test
+    fun carriesACompletedOnboardingBothWays() {
+        val onboarded = domain.copy(onboardingCompleted = true)
+
+        assertEquals(onboarded, onboarded.toEntity(updatedAt = 1).toDomain())
+    }
+
+    @Test
+    fun readsAStoredCompletedOnboarding() {
+        assertEquals(true, entity(onboardingCompleted = true).toDomain().onboardingCompleted)
     }
 
     // --- unknown enum values ----------------------------------------------------------------

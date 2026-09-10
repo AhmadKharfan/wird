@@ -71,9 +71,11 @@ val MIGRATION_1_2: Migration = object : Migration(1, 2) {
  * moved onto the habit layer. It survived version 2 deliberately, so that no version in
  * between left a database the app could not open.
  *
- * This is the only migration here that destroys data. It is safe because every row it
- * removes predates the habit model and is superseded rather than lost — the five prayers
- * are a counter habit now.
+ * This is the only migration here that destroys data, and it does destroy it: the rows are
+ * dropped, not converted into habits and entries. That is acceptable only because the table
+ * held nothing but data from the pre-release prototype — no release of the app ever carried
+ * it — and the five prayers are a counter habit now. A migration that drops a table a
+ * released version wrote would have to convert its rows first.
  */
 val MIGRATION_2_3: Migration = object : Migration(2, 3) {
     override suspend fun migrate(connection: SQLiteConnection) {

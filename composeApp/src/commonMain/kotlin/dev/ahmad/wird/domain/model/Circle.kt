@@ -12,7 +12,7 @@ data class Circle(
 
 /**
  * One person in a circle. [displayName] is null when they joined under
- * [PrivacyMode.ANONYMOUS], so anonymity is represented rather than approximated by a
+ * [PrivacyMode.POINTS_ONLY], so anonymity is represented rather than approximated by a
  * placeholder name.
  */
 data class CircleMember(

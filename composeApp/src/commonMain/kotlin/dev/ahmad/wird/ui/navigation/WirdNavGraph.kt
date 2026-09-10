@@ -16,6 +16,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import dev.ahmad.wird.ui.components.WirdBottomBar
+import dev.ahmad.wird.ui.feature.today.TodayScreen
 
 /**
  * The NavController lives here and nowhere else. Screens receive lambdas rather than the
@@ -55,7 +56,7 @@ fun WirdNavGraph(
             startDestination = TodayRoute,
             modifier = Modifier.padding(padding),
         ) {
-            composable<TodayRoute> { EmptyDestination() }
+            composable<TodayRoute> { TodayScreen() }
             composable<HistoryRoute> { EmptyDestination() }
             composable<SettingsRoute> { EmptyDestination() }
         }

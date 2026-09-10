@@ -2,9 +2,6 @@ package dev.ahmad.wird.domain.usecase
 
 import dev.ahmad.wird.domain.model.RoutineChoice
 import dev.ahmad.wird.domain.repository.SettingsRepository
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
-import kotlin.time.Clock
 
 /**
  * Finishes onboarding with the routine the user chose, and no account.
@@ -20,13 +17,9 @@ import kotlin.time.Clock
 class CompleteOnboardingUseCase(
     private val seedDefaultRoutine: SeedDefaultRoutineUseCase,
     private val settings: SettingsRepository,
-    private val clock: Clock,
-    private val zone: TimeZone,
 ) {
     suspend operator fun invoke(choice: RoutineChoice) {
-        if (choice == RoutineChoice.DEFAULT_ROUTINE) {
-            seedDefaultRoutine(clock.now().toLocalDateTime(zone).date)
-        }
+        if (choice == RoutineChoice.DEFAULT_ROUTINE) seedDefaultRoutine()
         settings.update { it.copy(onboardingCompleted = true) }
     }
 }

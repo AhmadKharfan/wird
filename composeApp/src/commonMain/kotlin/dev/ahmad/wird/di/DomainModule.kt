@@ -42,10 +42,10 @@ val domainModule = module {
     factory { ObserveTodayUseCase(observeDay = get(), clock = get(), zone = get()) }
     factory { ToggleHabitUseCase(entries = get()) }
     factory { SetCounterValueUseCase(entries = get()) }
-    factory { SeedDefaultRoutineUseCase(habits = get(), settings = get()) }
+    factory { SeedDefaultRoutineUseCase(habits = get(), settings = get(), clock = get(), zone = get()) }
 
     // --- onboarding -----------------------------------------------------------------------
-    factory { CompleteOnboardingUseCase(seedDefaultRoutine = get(), settings = get(), clock = get(), zone = get()) }
+    factory { CompleteOnboardingUseCase(seedDefaultRoutine = get(), settings = get()) }
     factory { ObserveOnboardingNeededUseCase(settings = get(), habits = get()) }
 
     // --- managing the routine -------------------------------------------------------------

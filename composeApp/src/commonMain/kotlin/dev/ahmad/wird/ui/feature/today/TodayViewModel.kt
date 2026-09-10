@@ -1,93 +1,95 @@
 package dev.ahmad.wird.ui.feature.today
 
-import dev.ahmad.wird.domain.model.Coordinates
-import dev.ahmad.wird.domain.model.Prayer
-import dev.ahmad.wird.domain.model.PrayerRecord
-import dev.ahmad.wird.domain.model.PrayerStatus
-import dev.ahmad.wird.domain.model.PrayerTime
-import dev.ahmad.wird.domain.usecase.GetPrayerTimesUseCase
-import dev.ahmad.wird.domain.usecase.ObservePrayerRecordsUseCase
-import dev.ahmad.wird.domain.usecase.RecordPrayerUseCase
+import dev.ahmad.wird.domain.model.DaySnapshot
+import dev.ahmad.wird.domain.usecase.CalculateDayStatsUseCase
+import dev.ahmad.wird.domain.usecase.ObserveTodayUseCase
+import dev.ahmad.wird.domain.usecase.SeedDefaultRoutineUseCase
+import dev.ahmad.wird.domain.usecase.ToggleHabitUseCase
 import dev.ahmad.wird.ui.base.BaseViewModel
-import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 
+/**
+ * Provisional Today screen on the new data layer, replaced when the design board lands.
+ *
+ * It calls use cases only, never a repository, and holds no calculation of its own —
+ * scoring is [CalculateDayStatsUseCase]'s job even here.
+ *
+ * Seeding runs from this ViewModel because Today is the first screen a fresh install
+ * opens. It is idempotent, so running it on every launch costs one query.
+ */
 class TodayViewModel(
-    private val getPrayerTimes: GetPrayerTimesUseCase,
-    private val observeRecords: ObservePrayerRecordsUseCase,
-    private val recordPrayer: RecordPrayerUseCase,
-    private val clock: Clock = Clock.System,
-    private val zone: TimeZone = TimeZone.currentSystemDefault(),
+    private val observeToday: ObserveTodayUseCase,
+    private val toggleHabit: ToggleHabitUseCase,
+    private val seedDefaultRoutine: SeedDefaultRoutineUseCase,
+    private val calculateDayStats: CalculateDayStatsUseCase,
+    private val clock: Clock,
+    private val zone: TimeZone,
 ) : BaseViewModel<TodayUiState, TodayEffect>(TodayUiState()), TodayInteractionListener {
 
-    // Placeholder until the location pack lands; Mecca keeps the screen truthful.
-    private val coordinates = Coordinates(latitude = 21.4225, longitude = 39.8262)
-
-    private val today: LocalDate get() = clock.now().toLocalDateTime(zone).date
-
-    private var times: List<PrayerTime> = emptyList()
-    private var records: List<PrayerRecord> = emptyList()
+    private var snapshot: DaySnapshot? = null
 
     init {
         load()
     }
 
-    override fun onPrayerTapped(prayer: Prayer) {
+    override fun onRetry() = load()
+
+    override fun onHabitTapped(habitId: String) {
+        val current = snapshot ?: return
+        val habit = current.scheduledHabits.firstOrNull { it.id == habitId } ?: return
+
         tryToExecute(
-            block = { recordPrayer(today, prayer, PrayerStatus.ON_TIME) },
+            block = { toggleHabit(habit, current.day, current.valueFor(habitId)) },
+            // The observation re-emits, so there is nothing to apply here.
             onSuccess = { },
-            onError = { sendEffect(TodayEffect.ShowMessage(FAILED_TO_RECORD)) },
+            onError = { sendEffect(TodayEffect.ShowMessage(FAILED_TO_SAVE)) },
         )
     }
-
-    override fun onRetry() = load()
 
     private fun load() {
         updateState { it.copy(isLoading = true, errorMessage = null) }
 
         tryToExecute(
-            block = { getPrayerTimes(today, coordinates) },
-            onSuccess = { loaded ->
-                times = loaded
-                rebuildRows()
-                observeRecordsForToday()
-            },
+            block = { seedDefaultRoutine(clock.now().toLocalDateTime(zone).date) },
+            onSuccess = { observeSnapshot() },
             onError = { updateState { state -> state.copy(isLoading = false, errorMessage = FAILED_TO_LOAD) } },
         )
     }
 
-    private fun observeRecordsForToday() {
+    private fun observeSnapshot() {
         collectFlow(
-            flow = observeRecords(today),
-            onEach = { updated ->
-                records = updated
-                rebuildRows()
+            flow = observeToday(),
+            onEach = { emitted ->
+                snapshot = emitted
+                render(emitted)
             },
-            onError = { sendEffect(TodayEffect.ShowMessage(FAILED_TO_LOAD)) },
+            onError = {
+                updateState { state -> state.copy(isLoading = false, errorMessage = FAILED_TO_LOAD) }
+            },
         )
     }
 
-    private fun rebuildRows() {
-        val statuses = records.associate { it.prayer to it.status }
+    private fun render(emitted: DaySnapshot) {
+        val stats = calculateDayStats(emitted)
+
         updateState { state ->
             state.copy(
                 isLoading = false,
-                rows = times.map { time ->
-                    PrayerRowUiState(
-                        prayer = time.prayer,
-                        label = time.prayer.arabicLabel(),
-                        dueAtLabel = time.dueAt.toLocalDateTime(zone).timeLabel(),
-                        status = statuses[time.prayer] ?: PrayerStatus.NOT_RECORDED,
+                errorMessage = null,
+                points = stats.points,
+                maxPoints = stats.maxPoints,
+                rows = emitted.scheduledHabits.map { habit ->
+                    val value = emitted.valueFor(habit.id)
+                    HabitRowUiState(
+                        habitId = habit.id,
+                        label = habit.name,
+                        valueLabel = habit.valueLabel(value),
+                        isComplete = value >= habit.target,
                     )
                 },
             )
         }
-    }
-
-    private companion object {
-        const val FAILED_TO_LOAD = "تعذّر تحميل المواقيت"
-        const val FAILED_TO_RECORD = "تعذّر حفظ التسجيل"
     }
 }

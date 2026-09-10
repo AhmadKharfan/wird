@@ -3,6 +3,7 @@ package dev.ahmad.wird.ui.feature.today
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,7 +21,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dev.ahmad.wird.domain.model.PrayerStatus
 import dev.ahmad.wird.ui.base.EffectHandler
 import dev.ahmad.wird.ui.components.WirdListRow
 import dev.ahmad.wird.ui.theme.Spacing
@@ -44,7 +44,13 @@ fun TodayScreen(viewModel: TodayViewModel = koinViewModel()) {
     )
 }
 
-/** Stateless: previewable and testable without a ViewModel. */
+/**
+ * Stateless: previewable and testable without a ViewModel.
+ *
+ * Provisional layout. It renders the real routine from the real database so the data layer
+ * is exercised end to end, but every visual decision here is a placeholder until the Today
+ * design board lands.
+ */
 @Composable
 private fun TodayContent(
     state: TodayUiState,
@@ -65,25 +71,32 @@ private fun TodayContent(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(state.errorMessage, style = MaterialTheme.typography.bodyLarge)
-                    TextButton(onClick = listener::onRetry) { Text("إعادة المحاولة") }
+                    TextButton(onClick = listener::onRetry) { Text(RETRY) }
                 }
 
                 else -> LazyColumn(
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(Spacing.md),
+                    contentPadding = PaddingValues(Spacing.md),
                     verticalArrangement = Arrangement.spacedBy(Spacing.sm),
                 ) {
-                    items(items = state.rows, key = { it.prayer.name }) { row ->
+                    item {
+                        Text(
+                            text = "${state.points} / ${state.maxPoints}",
+                            style = MaterialTheme.typography.titleLarge,
+                            modifier = Modifier.padding(bottom = Spacing.sm),
+                        )
+                    }
+                    items(items = state.rows, key = { it.habitId }) { row ->
                         WirdListRow(
-                            onClick = { listener.onPrayerTapped(row.prayer) },
+                            onClick = { listener.onHabitTapped(row.habitId) },
                             leading = { Text(row.label, style = MaterialTheme.typography.titleMedium) },
                             trailing = {
                                 Text(
-                                    text = row.dueAtLabel,
+                                    text = row.valueLabel,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = if (row.status == PrayerStatus.NOT_RECORDED) {
-                                        MaterialTheme.colorScheme.onSurface
-                                    } else {
+                                    color = if (row.isComplete) {
                                         MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface
                                     },
                                 )
                             },

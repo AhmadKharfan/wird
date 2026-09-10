@@ -48,6 +48,10 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.compose.ui.tooling)
             implementation(libs.androidx.activity.compose)
+            implementation(libs.sqlite.bundled)
+        }
+        wasmJsMain.dependencies {
+            implementation(libs.sqlite.web)
         }
     }
 }

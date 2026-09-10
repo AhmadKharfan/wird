@@ -45,6 +45,15 @@ interface HabitRepository {
     suspend fun upsert(habit: Habit)
 
     /**
+     * Whether any habit has ever existed, active or retired.
+     *
+     * Asked once at launch to decide whether the default routine still needs seeding. It
+     * deliberately counts retired habits: a user who retired the whole routine has made a
+     * decision, and an "are there active habits?" check would quietly reverse it.
+     */
+    suspend fun hasAnyHabit(): Boolean
+
+    /**
      * Renumbers [Habit.sortOrder] to match the given order. Reordering is presentational,
      * so it applies to every revision of each habit rather than opening a new one.
      */

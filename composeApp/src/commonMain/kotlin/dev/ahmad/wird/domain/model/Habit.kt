@@ -43,4 +43,10 @@ data class Habit(
     /** Whether this revision applies on [day], and therefore counts toward that day's maximum. */
     fun isLiveOn(day: LocalDate): Boolean =
         day >= effectiveFrom && (retiredOn == null || day < retiredOn)
+
+    /**
+     * Whether [value], recorded against this habit on a day, keeps it for that day. The one
+     * rule for "done": at or past the target, so an over-tap still counts.
+     */
+    fun isKeptBy(value: Int): Boolean = value >= target
 }

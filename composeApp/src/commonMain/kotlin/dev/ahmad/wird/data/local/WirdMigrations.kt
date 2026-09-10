@@ -10,21 +10,17 @@ import androidx.sqlite.execSQL
 // log is the whole point of the app, so a schema change that cannot be migrated is a bug to
 // fix, not data to discard.
 //
-// The statements below are copied verbatim from the generated schema JSON rather than
-// written by hand. Room checks the migrated database against that schema when it opens and
-// refuses to start on a missing or mismatched *table*, so SQL that merely looks equivalent
-// fails there rather than on a user's device.
-//
-// It does NOT check index names — a renamed index opens cleanly and silently costs the
-// query planner the index. That gap is measured, not assumed: renaming one index here fails
-// no Room validation at all. WirdMigrationTest therefore asserts the index names itself.
+// Table statements are copied verbatim from the generated schema JSON rather than written by
+// hand. Room validates the migrated database against that schema on open — columns, types,
+// nullability — and refuses to start on a difference. It does NOT check index names, which
+// was measured rather than assumed, so WirdMigrationTest asserts those separately.
 
 /**
  * Adds the habit, entry, settings and outbox tables.
  *
  * `prayer_record` is deliberately left alone. It is superseded by habit/entry, but the code
- * that reads it is still live at this version; it is dropped in the migration that lands
- * with its removal, so no version in between has a database the app cannot open.
+ * that read it was still live at this version; it is dropped in the migration that landed
+ * with its removal, so no version in between had a database the app could not open.
  */
 val MIGRATION_1_2: Migration = object : Migration(1, 2) {
     override suspend fun migrate(connection: SQLiteConnection) {
@@ -85,5 +81,24 @@ val MIGRATION_2_3: Migration = object : Migration(2, 3) {
     }
 }
 
+/**
+ * Adds a nickname to settings, and renames the privacy modes to the three the product offers.
+ *
+ * The rename is translated here rather than left to the mapper's unknown-value fallback, so
+ * the upgrade says what it means. Anonymous becomes points-only, which is what it always was.
+ * Open becomes points-only too rather than the nickname mode: there is no nickname to show,
+ * and a translation must never share more than the user already agreed to. Private stays
+ * private.
+ */
+val MIGRATION_3_4: Migration = object : Migration(3, 4) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE `settings` ADD COLUMN `nickname` TEXT")
+        connection.execSQL(
+            "UPDATE `settings` SET `privacyMode` = 'POINTS_ONLY' " +
+                "WHERE `privacyMode` IN ('OPEN', 'ANONYMOUS')",
+        )
+    }
+}
+
 /** Every migration this database has ever had, in order. */
-val WIRD_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+val WIRD_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)

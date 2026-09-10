@@ -11,20 +11,23 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
  * Migrates real databases and lets Room's own validator judge the result.
  *
  * Opening the database *is* the assertion for table shape: Room compares what it finds
- * against the exported `schemas/3.json` and refuses to start on a mismatch. Index names it
- * does **not** check — measured, not assumed — so those are asserted here directly.
+ * against the exported schema and refuses to start on a mismatch. Index names it does
+ * **not** check — measured, not assumed — so those are asserted here directly, and so is
+ * any data a migration is meant to translate.
  */
 class WirdMigrationTest {
 
     /** Identity hashes Room recorded for each version, from the exported schema JSON. */
     private val version1IdentityHash = "143101baa8c252ddd525cfa6f5cfb122"
     private val version2IdentityHash = "b47027428d3ebd522b7b1c305724144b"
+    private val version3IdentityHash = "e08863f4ea16054e866a25386e450e11"
 
     private val databaseFile: File =
         File.createTempFile("wird-migration-", ".db").also { it.delete() }
@@ -66,7 +69,7 @@ class WirdMigrationTest {
     /** The database as version 2 left it, carrying a habit and an entry worth keeping. */
     private fun createVersion2Database() = withConnection { connection ->
         connection.execSQL(createPrayerRecord)
-        MIGRATION_1_2_SQL.forEach(connection::execSQL)
+        HABIT_LAYER_TABLES.forEach(connection::execSQL)
         connection.stampVersion(2, version2IdentityHash)
         connection.execSQL(
             "INSERT INTO habit (revisionId, habitId, name, kind, target, iconKey, sortOrder, " +
@@ -76,6 +79,17 @@ class WirdMigrationTest {
         connection.execSQL(
             "INSERT INTO entry (id, habitId, epochDay, value, updatedAt) " +
                 "VALUES ('entry-1', 'duha', 20706, 1, 1)",
+        )
+    }
+
+    /** The database as version 3 left it, with a settings row saved under [privacyMode]. */
+    private fun createVersion3Database(privacyMode: String) = withConnection { connection ->
+        HABIT_LAYER_TABLES.forEach(connection::execSQL)
+        connection.stampVersion(3, version3IdentityHash)
+        connection.execSQL(
+            "INSERT INTO settings (id, themeMode, numeralSystem, latitude, longitude, " +
+                "calculationMethod, privacyMode, updatedAt) " +
+                "VALUES (0, 'DARK', 'ARABIC_INDIC', NULL, NULL, 'UMM_AL_QURA', '$privacyMode', 1)",
         )
     }
 
@@ -90,6 +104,13 @@ class WirdMigrationTest {
         val database = openMigratedDatabase()
         database.entryDao().observeDay(0).first()
         database.close()
+    }
+
+    private suspend fun migratedSettings(): SettingsEntity? {
+        val database = openMigratedDatabase()
+        val settings = database.settingsDao().get()
+        database.close()
+        return settings
     }
 
     private fun tableNames(): Set<String> {
@@ -128,8 +149,6 @@ class WirdMigrationTest {
 
     @Test
     fun keepsHabitsAndEntriesWrittenAtVersionTwo() = runTest {
-        // The check that matters for a real user: dropping the old table must not disturb
-        // anything the habit layer already wrote.
         createVersion2Database()
 
         val database = openMigratedDatabase()
@@ -140,6 +159,50 @@ class WirdMigrationTest {
         assertEquals(listOf("duha"), habits.map { it.habitId })
         assertEquals(listOf("entry-1"), entries.map { it.id })
         assertEquals(1, entries.single().value)
+    }
+
+    // --- version 3: the privacy modes are renamed and a nickname appears ----------------------
+
+    @Test
+    fun addsANicknameThatStartsEmpty() = runTest {
+        createVersion3Database(privacyMode = "PRIVATE")
+
+        assertNull(migratedSettings()?.nickname)
+    }
+
+    @Test
+    fun keepsAPrivateChoicePrivate() = runTest {
+        // The one choice that must never be loosened by an upgrade.
+        createVersion3Database(privacyMode = "PRIVATE")
+
+        assertEquals("PRIVATE", migratedSettings()?.privacyMode)
+    }
+
+    @Test
+    fun translatesTheOldAnonymousModeToPointsOnly() = runTest {
+        // Anonymous meant "my points, not my name" — which is exactly points-only.
+        createVersion3Database(privacyMode = "ANONYMOUS")
+
+        assertEquals("POINTS_ONLY", migratedSettings()?.privacyMode)
+    }
+
+    @Test
+    fun translatesTheOldOpenModeToPointsOnlyRatherThanToANickname() = runTest {
+        // Open shared a name, and its nearest new mode is the nickname — but no nickname
+        // exists to share, so points-only is the translation that shows no more than the
+        // user already agreed to.
+        createVersion3Database(privacyMode = "OPEN")
+
+        assertEquals("POINTS_ONLY", migratedSettings()?.privacyMode)
+    }
+
+    @Test
+    fun keepsTheOtherSettingsOfAMigratedRow() = runTest {
+        createVersion3Database(privacyMode = "OPEN")
+
+        val settings = migratedSettings()
+        assertEquals("DARK", settings?.themeMode)
+        assertEquals("ARABIC_INDIC", settings?.numeralSystem)
     }
 
     // --- the result ---------------------------------------------------------------------------
@@ -158,7 +221,7 @@ class WirdMigrationTest {
             statement.close()
         }
 
-        assertEquals(3, version)
+        assertEquals(4, version)
     }
 
     @Test
@@ -191,8 +254,12 @@ class WirdMigrationTest {
     }
 
     private companion object {
-        /** The version-2 tables, copied from `schemas/2.json` exactly as the migration writes them. */
-        val MIGRATION_1_2_SQL = listOf(
+        /**
+         * The four habit-layer tables exactly as versions 2 and 3 created them, copied from
+         * the exported schema. Version 2 had these plus `prayer_record`; version 3 had only
+         * these.
+         */
+        val HABIT_LAYER_TABLES = listOf(
             "CREATE TABLE IF NOT EXISTS `habit` (`revisionId` TEXT NOT NULL, `habitId` TEXT NOT NULL, " +
                 "`name` TEXT NOT NULL, `kind` TEXT NOT NULL, `target` INTEGER NOT NULL, " +
                 "`iconKey` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL, " +

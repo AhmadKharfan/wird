@@ -68,5 +68,22 @@ val MIGRATION_1_2: Migration = object : Migration(1, 2) {
     }
 }
 
+/**
+ * Drops `prayer_record`.
+ *
+ * Habit and entry superseded it, and the last code reading it went when the Today screen
+ * moved onto the habit layer. It survived version 2 deliberately, so that no version in
+ * between left a database the app could not open.
+ *
+ * This is the only migration here that destroys data. It is safe because every row it
+ * removes predates the habit model and is superseded rather than lost — the five prayers
+ * are a counter habit now.
+ */
+val MIGRATION_2_3: Migration = object : Migration(2, 3) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("DROP TABLE IF EXISTS `prayer_record`")
+    }
+}
+
 /** Every migration this database has ever had, in order. */
-val WIRD_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2)
+val WIRD_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)

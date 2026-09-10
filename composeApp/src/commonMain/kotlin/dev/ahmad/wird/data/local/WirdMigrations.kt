@@ -100,5 +100,18 @@ val MIGRATION_3_4: Migration = object : Migration(3, 4) {
     }
 }
 
+/**
+ * Records in settings whether onboarding was finished, starting at not finished.
+ *
+ * No install could have finished an onboarding that did not exist yet, so nothing is
+ * backfilled. An upgraded install with habits is still never sent through onboarding: it is
+ * only needed when there is neither the flag nor any habit.
+ */
+val MIGRATION_4_5: Migration = object : Migration(4, 5) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE `settings` ADD COLUMN `onboardingCompleted` INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
 /** Every migration this database has ever had, in order. */
-val WIRD_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+val WIRD_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)

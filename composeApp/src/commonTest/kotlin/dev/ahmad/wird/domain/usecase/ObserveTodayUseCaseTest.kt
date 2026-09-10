@@ -5,7 +5,12 @@ import dev.ahmad.wird.domain.fake.FakeHabitRepository
 import dev.ahmad.wird.domain.model.Entry
 import dev.ahmad.wird.domain.model.Habit
 import dev.ahmad.wird.domain.model.HabitKind
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -14,8 +19,12 @@ import kotlinx.datetime.asTimeZone
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class ObserveTodayUseCaseTest {
 
     /**
@@ -122,6 +131,44 @@ class ObserveTodayUseCaseTest {
         entries.setValue("duha", jan15, 1)
 
         assertEquals(1, observe().first().valueFor("duha"))
+    }
+
+    // --- midnight ------------------------------------------------------------------------
+
+    /** A clock that starts at [start] and moves with the test's virtual time. */
+    private fun TestScope.clockFrom(start: Instant) = object : Clock {
+        override fun now(): Instant = start + testScheduler.currentTime.milliseconds
+    }
+
+    private fun TestScope.daysSeenFrom(start: Instant): List<LocalDate> {
+        val observe = ObserveTodayUseCase(
+            ObserveDayUseCase(FakeHabitRepository(listOf(habit("duha"))), FakeEntryRepository()),
+            clockFrom(start),
+            london,
+        )
+        val days = mutableListOf<LocalDate>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { observe().collect { days += it.day } }
+        return days
+    }
+
+    @Test
+    fun movesOnToTheNextDayAtMidnight() = runTest {
+        // Left open overnight, Today has to turn over. Otherwise a tap after midnight is
+        // recorded against yesterday, and today looks untouched.
+        val days = daysSeenFrom(Instant.parse("2026-01-15T23:59:00Z"))
+
+        advanceTimeBy(2.minutes)
+
+        assertEquals(listOf(jan15, jan16), days.distinct())
+    }
+
+    @Test
+    fun staysOnTodayUntilMidnight() = runTest {
+        val days = daysSeenFrom(Instant.parse("2026-01-15T23:59:00Z"))
+
+        advanceTimeBy(30.seconds)
+
+        assertEquals(listOf(jan15), days.distinct())
     }
 
     // --- the timezone rule ---------------------------------------------------------------

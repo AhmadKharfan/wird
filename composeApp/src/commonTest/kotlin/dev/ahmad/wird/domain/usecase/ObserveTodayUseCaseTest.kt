@@ -64,7 +64,7 @@ class ObserveTodayUseCaseTest {
         habits: FakeHabitRepository,
         entries: FakeEntryRepository,
         zone: TimeZone = london,
-    ) = ObserveTodayUseCase(habits, entries, clockAt(now), zone)
+    ) = ObserveTodayUseCase(ObserveDayUseCase(habits, entries), clockAt(now), zone)
 
     // --- the ordinary case ------------------------------------------------------------
 
